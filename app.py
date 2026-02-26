@@ -4,32 +4,9 @@ import streamlit_antd_components as sac
 # 1. 페이지 전체 설정
 st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 모니터링")
 
-# --- 사이드바 레이아웃 컨테이너 설정 (상/하단 분리) ---
-sidebar_top = st.sidebar.container()
-st.sidebar.markdown("<div style='height: 55vh;'></div>", unsafe_allow_html=True) # 하단으로 밀어내기 위한 여백
-sidebar_bottom = st.sidebar.container()
-
-# --- 테마 선택 (사진과 동일한 해/달 아이콘 토글 적용) ---
-with sidebar_bottom:
-    # `theme_selector`가 session_state에 없으면 0으로 초기화합니다.
-    if 'theme_selector' not in st.session_state:
-        st.session_state.theme_selector = 0
-
-    # sac.segmented는 st.session_state.theme_selector 값을 사용하고 업데이트합니다.
-    sac.segmented(
-        items=[
-            sac.SegmentedItem(icon='sun'),  # 0번: 해 (화이트 모드)
-            sac.SegmentedItem(icon='moon'), # 1번: 달 (다크 모드)
-        ],
-        align='start',
-        size='sm',
-        radius='lg',
-        return_index=True,
-        key='theme_selector'
-    )
-
 # session_state에 저장된 인덱스를 바탕으로 테마 이름을 결정합니다.
-theme_selection = "다크 모드" if st.session_state.theme_selector == 1 else "화이트 모드"
+# .get()을 사용하여 앱 최초 실행 시에도 오류가 발생하지 않도록 합니다.
+theme_selection = "다크 모드" if st.session_state.get('theme_selector', 0) == 1 else "화이트 모드"
 
 # --- 테마별 시인성 최적화 설정 (레이아웃 수치는 절대 고정) ---
 if theme_selection == "다크 모드":
@@ -85,6 +62,18 @@ st.markdown(f"""
     .stSlider p {{
         color: {sub_header_color} !important;
     }}
+
+    /* 체크박스 라벨(Train A/B, Polisher 등) 글자색 강제 동기화 (streamlit 버전 대응) */
+    [data-testid="stCheckbox"] p, [data-testid="stCheckbox"] span {{
+        color: {sub_header_color} !important;
+        font-weight: bold !important;
+    }}
+
+    /* 사이드바 하단 고정용 */
+    [data-testid="stSidebar"] > div:first-child {{
+        display: flex;
+        flex-direction: column;
+    }}
     
     .process-container {{
         background-color: {box_bg};
@@ -131,7 +120,7 @@ st.markdown(f"""
     .line-angle-rd::after {{ display: none; }} 
 
     .line-h-solid {{ width: 100%; height: 2px; margin-top: 54px; background-color: #334155; position: relative; z-index: 1; }}
-    .flow-data-box {{ background-color: #002b36; border: 1px solid #00d4ff; border-radius: 4px; padding: 1px 5px; font-size: 0.75rem; font-weight: bold; color: #ffffff; }}
+    .flow-data-box {{ background-color: #002b36; border: 1px solid #00d4ff; border-radius: 4px; padding: 2px 8px; font-size: 0.9rem; font-weight: bold; color: #ffffff; }}
     .manifold-anchor {{ width: 100%; height: 110px; position: relative; z-index: 1; }}
     
     .path-up-center {{ position: absolute; bottom: 50%; left: 0; width: 100%; height: 110px; z-index: 1; }}
@@ -154,6 +143,32 @@ st.markdown(f"""
     .path-down-center-solid .vertical {{ position: absolute; left: 0; top: 33px; width: 2px; height: 70%; background-color: #334155; }}
     .path-down-center-solid .horizontal {{ position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background-color: #334155; }}
 
+    .path-up-center-solid {{ position: absolute; bottom: 50%; left: 0; width: 100%; height: 110px; z-index: 1; }}
+    .path-up-center-solid .vertical {{ 
+        position: absolute; left: 0; bottom: 20px; width: 2px; height: 80%;
+        background-color: #334155;
+    }}
+    .path-up-center-solid .horizontal {{ 
+        position: absolute; left: 0; top: 0; width: 100%; height: 2px;
+        background-color: #334155;
+    }}
+
+    .path-down-center-flow {{ position: absolute; top: 50%; left: 0; width: 100%; height: 110px; z-index: 1; }}
+    .path-down-center-flow .vertical {{
+        position: absolute; left: 0; top: 33px; width: 4px; height: 70%;
+        background: radial-gradient(circle, {flow_color} 40%, transparent 70%);
+        background-size: 4px 24px; animation: flow-v-downward 0.6s linear infinite;
+        box-shadow: {flow_glow};
+        border-radius: 2px;
+    }}
+    .path-down-center-flow .horizontal {{
+        position: absolute; left: 0; bottom: 0; width: 100%; height: 4px;
+        background: radial-gradient(circle, {flow_color} 40%, transparent 70%);
+        background-size: 24px 4px; animation: flow-h 0.6s linear infinite;
+        box-shadow: {flow_glow};
+        border-radius: 2px;
+    }}
+
     .outlet-v-down {{ 
         position: absolute; right: 0; top: -54px; width: 4px; height: 130%; 
         background: radial-gradient(circle, {flow_color} 40%, transparent 70%);  /* 변수 적용 */
@@ -169,6 +184,14 @@ st.markdown(f"""
         border-radius: 2px;
     }}
     .outlet-v-solid {{ position: absolute; right: 0; top: 55px; width: 2px; height: 140%; background-color: #334155; }}
+
+    .outlet-v-up-bottom {{ 
+        position: absolute; right: 0; top: 55px; width: 4px; height: 130%; 
+        background: radial-gradient(circle, {flow_color} 40%, transparent 70%);
+        background-size: 4px 24px; animation: flow-v-upward 0.6s linear infinite; 
+        box-shadow: {flow_glow};
+        border-radius: 2px;
+    }}
 
     .basin-visual {{ 
         width: 100%; height: 110px; background-color: {box_bg}; border: 2px solid {border_color}; 
@@ -219,33 +242,89 @@ with col_left:
     pure_tabs = st.tabs([" 1-1) 이온교환수지", " 1-2) R.O System"])
     with pure_tabs[0]:
         st.markdown("<div class='sub-header-final'>1-1) 이온교환수지</div>", unsafe_allow_html=True)
+        
+        # Individual train selection using checkboxes for toggle functionality
+        cols = st.columns([1, 1, 5])
+        with cols[0]:
+            train_a_running = st.checkbox("Train A", value=True, key="ix_train_a")
+        with cols[1]:
+            train_b_running = st.checkbox("Train B", value=False, key="ix_train_b")
+
+        # Define styles and values based on state
+        train_a_glow = "running-glow" if train_a_running else ""
+        train_a_pipe = "line-h-flow" if train_a_running else "line-h-solid"
+        train_a_flow = "9 m³/h" if train_a_running else "0 m³/h"
+        
+        train_b_glow = "running-glow" if train_b_running else ""
+        train_b_pipe = "line-h-flow" if train_b_running else "line-h-solid"
+        train_b_flow = "9 m³/h" if train_b_running else "0 m³/h"
+
+        # Determine manifold path styles
+        path_a_class = "path-up-center" if train_a_running else "path-up-center-solid"
+        path_b_class = "path-down-center-flow" if train_b_running else "path-down-center-solid"
+
+        # Determine outlet manifold classes
+        outlet_a_pipe_class = "outlet-v-down" if train_a_running else "outlet-v-solid"
+        outlet_b_pipe_class = "outlet-v-up-bottom" if train_b_running else "outlet-v-solid"
+
+        # Layout
         ix_r = [1.2, 0.4, 1.0, 0.4, 1.0, 0.5, 1.1]
         ra = st.columns(ix_r)
-        with ra[2]: st.markdown(f"<div class='process-container running-glow'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.2μS/cm</div></div>", unsafe_allow_html=True)
-        with ra[3]: st.markdown("<div class='line-h-flow'></div>", unsafe_allow_html=True)
-        with ra[4]: st.markdown(f"<div class='process-container running-glow'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.06μS/cm</div></div>", unsafe_allow_html=True)
-        with ra[5]: st.markdown("""<div style='position:absolute; width:150%; text-align:center; bottom:0px; z-index:25;'><div class='flow-data-box'> 9 m³/h</div></div><div class='line-h-flow'></div>""", unsafe_allow_html=True)
+        with ra[2]: st.markdown(f"<div class='process-container {train_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.2μS/cm</div></div>", unsafe_allow_html=True)
+        with ra[3]: st.markdown(f"<div class='{train_a_pipe}'></div>", unsafe_allow_html=True)
+        with ra[4]: st.markdown(f"<div class='process-container {train_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.06μS/cm</div></div>", unsafe_allow_html=True)
+        with ra[5]: st.markdown(f"""<div style='position:absolute; width:150%; text-align:center; bottom:0px; z-index:25;'><div class='flow-data-box'> {train_a_flow}</div></div><div class='{train_a_pipe}'></div>""", unsafe_allow_html=True)
+        
         rm = st.columns(ix_r)
         with rm[0]: st.markdown(f"""<div class="basin-visual"><div class="basin-water" style="height: 65%;"></div><div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Raw Water Basin</div><div style="z-index:15; color:#eee; font-size:0.7rem; font-weight:bold; background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:8px;">3,000 mm</div></div>""", unsafe_allow_html=True)
-        with rm[1]: st.markdown("<div class='manifold-anchor'><div class='path-up-center'><div class='vertical'></div><div class='horizontal'></div></div><div class='path-down-center-solid'><div class='vertical'></div><div class='horizontal'></div></div></div>", unsafe_allow_html=True)
-        with rm[5]: st.markdown("""<div class='manifold-anchor'><div style='position:absolute; top:0; left:0; width:100%; height:50%;'><div class='outlet-v-down' style='top:-50px; height:150%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:70%;'><div class='outlet-v-solid' style='height:100%;'></div></div></div>""", unsafe_allow_html=True)
+        with rm[1]: st.markdown(f"""
+            <div class='manifold-anchor'>
+                <div class='{path_a_class}'>
+                    <div class='vertical'></div>
+                    <div class='horizontal'></div>
+                </div>
+                <div class='{path_b_class}'>
+                    <div class='vertical'></div>
+                    <div class='horizontal'></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        with rm[5]: st.markdown(f"""
+            <div class='manifold-anchor'>
+                <div style='position:absolute; top:0; left:0; width:100%; height:50%;'>
+                    <div class='{outlet_a_pipe_class}' style='top:-54px; height:150%;'></div>
+                </div>
+                <div style='position:absolute; bottom:0; left:0; width:100%; height:70%;'>
+                    <div class='{outlet_b_pipe_class}' style='height:100%;'></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         with rm[6]: render_tank("DEMI TANK", "8,000", "mm", 80)
+        
         rb = st.columns(ix_r)
-        with rb[2]: st.markdown(f"<div class='process-container'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
-        with rb[3]: st.markdown("<div class='line-h-solid'></div>", unsafe_allow_html=True)
-        with rb[4]: st.markdown(f"<div class='process-container'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
-        with rb[5]: st.markdown("""<div style='position:absolute; width:150%; text-align:center; top:65px; z-index:25;'><div class='flow-data-box'> 0 m³/h</div></div><div class='line-h-solid'></div>""", unsafe_allow_html=True)
+        with rb[2]: st.markdown(f"<div class='process-container {train_b_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
+        with rb[3]: st.markdown(f"<div class='{train_b_pipe}'></div>", unsafe_allow_html=True)
+        with rb[4]: st.markdown(f"<div class='process-container {train_b_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
+        with rb[5]: st.markdown(f"""<div style='position:absolute; width:150%; text-align:center; top: 70px; z-index:25;'><div class='flow-data-box'> {train_b_flow}</div></div><div class='{train_b_pipe}'></div>""", unsafe_allow_html=True)
     with pure_tabs[1]:
         st.markdown("<div class='sub-header-final'>1-2) R.O System</div>", unsafe_allow_html=True)
+        
+        ro_running = st.checkbox("R.O System 가동", value=True, key="ro_system_running")
+
         st.markdown("<div style='height: 125px;'></div>", unsafe_allow_html=True)
+
+        ro_glow = "running-glow" if ro_running else ""
+        ro_pipe = "line-h-flow" if ro_running else "line-h-solid"
+        ro_flow = "6 m³/h" if ro_running else "0 m³/h"
+        
         ro_r = [1.2, 0.4, 1.0, 0.4, 1.0, 0.5, 1.1]
         rr = st.columns(ro_r)
         with rr[0]: st.markdown(f"""<div class="basin-visual"><div class="basin-water" style="height: 50%;"></div><div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Raw Water Basin</div><div style="z-index:15; color:#eee; font-size:0.7rem; font-weight:bold; background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:8px;">3,000 mm</div></div>""", unsafe_allow_html=True)
-        with rr[1]: st.markdown("<div class='line-h-flow'></div>", unsafe_allow_html=True)
-        with rr[2]: st.markdown(f"<div class='process-container running-glow'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold; line-height:1.2;'>Micro & Carbon<br>Filter</div></div>", unsafe_allow_html=True)
-        with rr[3]: st.markdown("<div class='line-h-flow'></div>", unsafe_allow_html=True)
-        with rr[4]: st.markdown(f"<div class='process-container running-glow'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>R.O Units</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>7 µS/cm</div></div>", unsafe_allow_html=True)
-        with rr[5]: st.markdown("""<div style='position:relative; height:110px;'><div style='position:absolute; width:130%; text-align:center; bottom:70px; white-space: nowrap; z-index:25;'><div class='flow-data-box'>6 m³/h</div></div><div class='line-h-flow'></div></div>""", unsafe_allow_html=True)
+        with rr[1]: st.markdown(f"<div class='{ro_pipe}'></div>", unsafe_allow_html=True)
+        with rr[2]: st.markdown(f"<div class='process-container {ro_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold; line-height:1.2;'>Micro & Carbon<br>Filter</div></div>", unsafe_allow_html=True)
+        with rr[3]: st.markdown(f"<div class='{ro_pipe}'></div>", unsafe_allow_html=True)
+        with rr[4]: st.markdown(f"<div class='process-container {ro_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>R.O Units</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>7 µS/cm</div></div>", unsafe_allow_html=True)
+        with rr[5]: st.markdown(f"""<div style='position:relative; height:110px;'><div style='position:absolute; width:130%; text-align:center; bottom:70px; white-space: nowrap; z-index:25;'><div class='flow-data-box'>{ro_flow}</div></div><div class='{ro_pipe}'></div></div>""", unsafe_allow_html=True)
         
         with rr[6]: 
             ro_tank_current = 1500  # 원하시는 현재 수위(mm)를 여기에 입력하세요.
@@ -260,65 +339,164 @@ with col_right:
     dh_tab_main = st.tabs([" 2-1) DH 처리 계통"])
     with dh_tab_main[0]:
         st.markdown("<div class='sub-header-final'>2-1) DH 처리 계통</div>", unsafe_allow_html=True)
+
+        # Individual line selection using checkboxes for toggle functionality
+        cols_dh = st.columns([2, 2, 5])
+        with cols_dh[0]:
+            polisher_running = st.checkbox("Polisher", value=True, key="dh_polisher")
+        with cols_dh[1]:
+            afm_running = st.checkbox("AFM", value=False, key="dh_afm")
+
+        # Determine state based on selection
+        # (The checkbox return values are now directly used)
+
+        # Define styles and values based on state
+        polisher_glow = "running-glow" if polisher_running else ""
+        polisher_pipe = "line-h-flow" if polisher_running else "line-h-solid"
+        polisher_flow = "80 m³/h" if polisher_running else "0 m³/h"
+
+        afm_glow = "running-glow" if afm_running else ""
+        afm_pipe = "line-h-flow" if afm_running else "line-h-solid"
+        afm_flow = "80 m³/h" if afm_running else "0 m³/h"
+
+        # Determine manifold path styles for DH system
+        dh_path_polisher_class = "path-up-center" if polisher_running else "path-up-center-solid"
+        dh_path_afm_class = "path-down-center-flow" if afm_running else "path-down-center-solid"
+
+        # Determine outlet manifold classes
+        dh_outlet_a_class = "outlet-v-down" if polisher_running else "outlet-v-solid"
+        dh_outlet_b_class = "outlet-v-up-bottom" if afm_running else "outlet-v-solid"
+        
+        # Layout
         dh_r = [1.0, 0.4, 1.2, 0.4, 1.0]
         dra = st.columns(dh_r)
-        with dra[2]: st.markdown(f"""<div class='process-container running-glow'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Polisher</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.08μS/cm</div></div>""", unsafe_allow_html=True)
-        with dra[3]: st.markdown("""<div style='position:absolute; width:200%; text-align:center; bottom:0px; z-index:25;'><div class='flow-data-box'> 80 m³/h</div></div><div class='line-h-flow'></div>""", unsafe_allow_html=True)
+        with dra[2]: st.markdown(f"""<div class='process-container {polisher_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Polisher</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.08μS/cm</div></div>""", unsafe_allow_html=True)
+        with dra[3]: st.markdown(f"""<div style='position:absolute; width:200%; text-align:center; bottom:0px; z-index:25;'><div class='flow-data-box'> {polisher_flow}</div></div><div class='{polisher_pipe}'></div>""", unsafe_allow_html=True)
+        
         drm = st.columns(dh_r)
         with drm[0]: st.markdown(f"<div class='process-container'><div style='color:#888; font-size:0.8rem;'>공급 (Return)</div></div>", unsafe_allow_html=True)
-        with drm[1]: st.markdown("<div class='manifold-anchor'><div class='path-up-center'><div class='vertical'></div><div class='horizontal'></div></div><div class='path-down-center-solid'><div class='vertical'></div><div class='horizontal'></div></div></div>", unsafe_allow_html=True)
-        with drm[3]: st.markdown("""<div class='manifold-anchor'><div style='position:absolute; top:0; left:0; width:100%; height:50%;'><div class='outlet-v-down' style='top:-50px; height:150%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:70%;'><div class='outlet-v-solid' style='height:100%;'></div></div></div>""", unsafe_allow_html=True)
+        with drm[1]: st.markdown(f"""
+            <div class='manifold-anchor'>
+                <div class='{dh_path_polisher_class}'>
+                    <div class='vertical'></div>
+                    <div class='horizontal'></div>
+                </div>
+                <div class='{dh_path_afm_class}'>
+                    <div class='vertical'></div>
+                    <div class='horizontal'></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        with drm[3]: st.markdown(f"""
+            <div class='manifold-anchor'>
+                <div style='position:absolute; top:0; left:0; width:100%; height:50%;'>
+                    <div class='{dh_outlet_a_class}' style='top:-54px; height:150%;'></div>
+                </div>
+                <div style='position:absolute; bottom:0; left:0; width:100%; height:70%;'>
+                    <div class='{dh_outlet_b_class}' style='height:100%;'></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         with drm[4]: st.markdown(f"<div class='process-container'><div style='color:#888; font-size:0.8rem;'>지역 공급</div></div>", unsafe_allow_html=True)
+        
         drb = st.columns(dh_r)
-        with drb[2]: st.markdown(f"<div class='process-container'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>AFM</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
-        with drb[3]: st.markdown("""<div style='position:absolute; width:200%; text-align:center; top:65px; z-index:25;'><div class='flow-data-box'> 0 m³/h</div></div><div class='line-h-solid'></div>""", unsafe_allow_html=True)
+        with drb[2]: st.markdown(f"<div class='process-container {afm_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>AFM</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
+        with drb[3]: st.markdown(f"""<div style='position:absolute; width:200%; text-align:center; bottom:-50px; z-index:25;'><div class='flow-data-box'> {afm_flow}</div></div><div class='{afm_pipe}'></div>""", unsafe_allow_html=True)
 
 # 3. 폐수처리계통
 st.divider()
 st.markdown("### 3. 폐수처리계통")
-ww_r = [1.2, 0.4, 1.2, 0.4, 1.2, 0.4, 1.2, 0.4, 1.2]
+
+# 폐수처리 수위 선택기
+level_options = ["L/L", "L", "H", "H/H"]
+selected_level = st.radio("폐수조 수위 상태 선택", options=level_options, index=0, horizontal=True, label_visibility="collapsed")
+
+# 수위에 따른 설정값 및 가동 상태 결정
+is_ww_running = selected_level != "L/L"
+
+level_settings = {
+    "L/L": {"height": 15, "active_label": "L/L"},
+    "L": {"height": 40, "active_label": "L"},
+    "H": {"height": 75, "active_label": "H"},
+    "H/H": {"height": 100, "active_label": "H/H"},
+}
+
+water_height = level_settings[selected_level]["height"]
+active_label = level_settings[selected_level]["active_label"]
+
+# 가동 상태에 따른 스타일 및 데이터 정의
+ww_flow_class = "line-h-flow" if is_ww_running else "line-h-solid"
+ww_glow_class = "running-glow" if is_ww_running else ""
+ww_flow_rate = "5 m³/h" if is_ww_running else "0 m³/h"
+filter_a_status_text = "RUNNING" if is_ww_running else "STOPPED"
+filter_a_status_color = "#00ff00" if is_ww_running else "#ff4b4b"
+ww_outlet_a_pipe_class = "outlet-v-up" if is_ww_running else "outlet-v-solid"
+ww_outlet_b_pipe_class = "outlet-v-down" if is_ww_running else "outlet-v-solid"
+
+
+def get_alarm_labels_html(active_label, box_bg, is_filtered_pond=False):
+    """선택된 레벨에 해당하는 알람 라벨의 HTML만 생성합니다."""
+    if not active_label:
+        return ""
+
+    l_position = "32px" if is_filtered_pond else "30px"
+    
+    labels = {
+        "H/H": f'<div class="alarm-label" style="top:-25px; right:8px; background-color:{box_bg};">H/H</div>',
+        "H": f'<div class="alarm-label" style="top:8px; right:8px; background-color:{box_bg};">H</div>',
+        "L": f'<div class="alarm-label" style="bottom:{l_position}; right:8px; background-color:{box_bg};">L</div>',
+        "L/L": f'<div class="alarm-label" style="bottom:8px; right:8px; background-color:{box_bg};">L/L</div>'
+    }
+    return labels.get(active_label, "")
+
+# 각 POND에 맞는 알람 HTML 생성
+ww_pond_alarms = get_alarm_labels_html(active_label, box_bg)
+clarified_pond_alarms = get_alarm_labels_html(active_label, box_bg)
+filtered_pond_alarms = get_alarm_labels_html(active_label, box_bg, is_filtered_pond=True)
+
+
+ww_r = [1.2, 0.4, 1.2, 0.4, 1.2, 0.4, 1.2, 0.4, 1.2, 0.5]
 
 w_ra = st.columns(ww_r)
-with w_ra[5]: st.markdown("<div class='line-h-flow'></div>", unsafe_allow_html=True)
-with w_ra[6]: st.markdown(f"<div class='process-container running-glow'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Pressure Filter A</div><div style='color:#00ff00; font-size:0.75rem; font-weight:bold;'>RUNNING</div></div>", unsafe_allow_html=True)
-with w_ra[7]: st.markdown("<div class='line-h-flow'></div>", unsafe_allow_html=True)
+with w_ra[5]: st.markdown(f"<div class='{ww_flow_class}'></div>", unsafe_allow_html=True)
+with w_ra[6]: st.markdown(f"<div class='process-container {ww_glow_class}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Pressure Filter A</div><div style='color:{filter_a_status_color}; font-size:0.75rem; font-weight:bold;'>{filter_a_status_text}</div></div>", unsafe_allow_html=True)
+with w_ra[7]: st.markdown(f"<div class='{ww_flow_class}'></div>", unsafe_allow_html=True)
 
 w_rm = st.columns(ww_r)
 with w_rm[0]: st.markdown(f"""
     <div class="basin-visual" style="margin-top:-28px;">
-        <div class="basin-water" style="height: 70%;"></div>
+        <div class="basin-water" style="height: {water_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">W/WATER POND</div>
-        <div class="alarm-label" style="top:-25px; right:8px; background-color:{box_bg};">H/H</div>
-        <div class="alarm-label" style="top:8px; right:8px; background-color:rgba(0,0,0,0.1);">H</div>
-        <div class="alarm-label" style="bottom:30px; right:8px; background-color:rgba(0,0,0,0.1);">L</div>
-        <div class="alarm-label" style="bottom:8px; right:8px; background-color:rgba(0,0,0,0.1);">L/L</div>
+        {ww_pond_alarms}
     </div>
     """, unsafe_allow_html=True)
-with w_rm[1]: st.markdown("""<div class='manifold-anchor' style='margin-top:-28px;'><div class='line-h-flow' style='margin-top:54px;'></div></div>""", unsafe_allow_html=True)
-with w_rm[2]: st.markdown(f"<div class='process-container running-glow' style='margin-top:-28px;'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Reaction Tank</div><div style='color:{data_color}; font-weight:bold;'>pH : 7.0</div></div>", unsafe_allow_html=True)
-with w_rm[3]: st.markdown("<div class='line-h-flow' style='margin-top:26px;'></div>", unsafe_allow_html=True)
+with w_rm[1]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-28px;'><div class='{ww_flow_class}' style='margin-top:54px;'></div></div>""", unsafe_allow_html=True)
+with w_rm[2]: st.markdown(f"<div class='process-container {ww_glow_class}' style='margin-top:-28px;'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Reaction Tank</div><div style='color:{data_color}; font-weight:bold;'>pH : 7.0</div></div>", unsafe_allow_html=True)
+with w_rm[3]: st.markdown(f"<div class='{ww_flow_class}' style='margin-top:26px;'></div>", unsafe_allow_html=True)
 with w_rm[4]: st.markdown(f"""
-    <div class="basin-visual running-glow" style="margin-top:-28px;">
-        <div class="basin-water" style="height: 40%;"></div>
+    <div class="basin-visual {ww_glow_class}" style="margin-top:-28px;">
+        <div class="basin-water" style="height: {water_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Clarified W. POND</div>
         <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : 7.2</div>
-        <div class="alarm-label" style="top:-25px; right:8px; background-color:{box_bg};">H/H</div>
-        <div class="alarm-label" style="top:8px; right:8px; background-color:rgba(0,0,0,0.1);">H</div>
-        <div class="alarm-label" style="bottom:30px; right:8px; background-color:rgba(0,0,0,0.1);">L</div>
-        <div class="alarm-label" style="bottom:8px; right:8px; background-color:rgba(0,0,0,0.1);">L/L</div>
+        {clarified_pond_alarms}
     </div>
     """, unsafe_allow_html=True)
-with w_rm[5]: st.markdown("""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='outlet-v-up' style='top:-28px; height:100%; left:0; right:auto;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='outlet-v-solid' style='height:100%; left:0; right:auto;'></div></div><div class='path-down-center-solid'><div class='horizontal'></div></div></div>""", unsafe_allow_html=True)
-with w_rm[7]: st.markdown("""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='outlet-v-down' style='top:-28px; height:100%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='outlet-v-solid' style='height:100%;'></div></div></div>""", unsafe_allow_html=True)
+with w_rm[5]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='{ww_outlet_a_pipe_class}' style='top:-28px; height:100%; left:0; right:auto;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='outlet-v-solid' style='height:100%; left:0; right:auto;'></div></div><div class='path-down-center-solid'><div class='horizontal'></div></div></div>""", unsafe_allow_html=True)
+with w_rm[7]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='{ww_outlet_b_pipe_class}' style='top:-28px; height:100%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='outlet-v-solid' style='height:100%;'></div></div></div>""", unsafe_allow_html=True)
 with w_rm[8]: st.markdown(f"""
     <div class="basin-visual" style="margin-top:-28px;">
-        <div class="basin-water" style="height: 60%;"></div>
+        <div class="basin-water" style="height: {water_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Filtered Pond</div>
         <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : 7.2</div>
-        <div class="alarm-label" style="top:-25px; right:8px; background-color:{box_bg};">H/H</div>
-        <div class="alarm-label" style="top:8px; right:8px; background-color:rgba(0,0,0,0.1);">H</div>
-        <div class="alarm-label" style="bottom:32px; right:8px; background-color:rgba(0,0,0,0.1);">L</div>
-        <div class="alarm-label" style="bottom:8px; right:8px; background-color:rgba(0,0,0,0.1);">L/L</div>
+        {filtered_pond_alarms}
+    </div>
+    """, unsafe_allow_html=True)
+with w_rm[9]: st.markdown(f"""
+    <div style='position:relative; height: 110px; margin-top:-28px;'>
+        <div class='{ww_flow_class}' style='margin-top: 54px;'></div>
+        <div style='position:absolute; width:100%; text-align:center; top: -35px; z-index:25;'>
+             <div class='flow-data-box'>{ww_flow_rate}</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -330,18 +508,16 @@ with w_rb[7]: st.markdown("<div style='margin-top:-85px;'><div class='line-h-sol
 st.divider()
 st.markdown("### 4. 탈질 계통")
 
-# 변수 사전 정의 (탱크 A, B 레벨)
-tank_a_level = 80.1
-tank_b_level = 80.5
+denitrification_tabs = st.tabs([" 4-1) 탈질설비계통", " 4-2) ST LOAD 기반 입고 시기 예측"])
 
-deni_tabs = st.tabs([" 4-1) 탈질 처리 계통", " 4-2) 암모니아수 입고 예측"])
+with denitrification_tabs[0]:
+    st.markdown("<div class='sub-header-final'>4-1) 탈질 설비 계통</div>", unsafe_allow_html=True)
+    # 변수 사전 정의 (탱크 A, B 레벨)
+    tank_a_level = 80.1
+    tank_b_level = 80.5
 
-# 기존 4-1 탭
-with deni_tabs[0]:
-    st.markdown("<div class='sub-header-final'>4-1) 탈질 처리 계통</div>", unsafe_allow_html=True)
-    
     col4_l, col4_m, col4_r = st.columns([0.2, 1.4, 0.8])
-    
+
     with col4_l:
         render_tank("NH4OH Tank A", f"{tank_a_level}", "%", tank_a_level)
         st.markdown("<div style='height: 0px;'></div>", unsafe_allow_html=True)
@@ -358,7 +534,7 @@ with deni_tabs[0]:
                 <div class="outlet-v-up" style="position: absolute; left: 70px; top: 25px; height: 119px;"></div>
                 <div class="line-h-flow" style="position: absolute; left: 70px; top: -30px; width: 200px;"></div>
                 <div style="position: absolute; left: 280px; top: 13px; z-index: 25;">
-                    <div class="flow-data-box">120 kg/h</div>
+                    <div class="flow-data-box" style="font-size: 1.1rem; padding: 3px 10px;">120 kg/h</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -366,28 +542,29 @@ with deni_tabs[0]:
     with col4_r:
         st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
         m_cols = st.columns(2)
-        m_cols[0].metric("ST LOAD", "120 MW")
-        m_cols[1].metric("ST NOx", "4.5 ppm")
+        m_cols[0].metric("ST LOAD", "24 MW")
+        m_cols[1].metric("NOx", "15 ppm")
 
-# 4-2 탭: 입고 시기 예측 시뮬레이터
-with deni_tabs[1]:
+with denitrification_tabs[1]:
     st.markdown("<div class='sub-header-final'>4-2) ST LOAD 기반 입고 시기 예측</div>", unsafe_allow_html=True)
     st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-    
+
+    # 변수 사전 정의 (탱크 A, B 레벨)
+    tank_a_level = 80.1
+    tank_b_level = 80.5
+
     sim_col1, sim_col2 = st.columns([0.4, 0.6], gap="large")
-    
+
     with sim_col1:
         st.markdown(f"<h4 style='color: {sub_header_color};'>시뮬레이션 설정</h4>", unsafe_allow_html=True)
         
         # 슬라이더: 예상 ST LOAD (최대 24MW)
-        sim_load = st.slider("예상 평균 ST LOAD (MW)", min_value=0, max_value=24, value=24, step=1)
+        sim_load = st.slider("Steam Turbin LOAD (MW)", min_value=0, max_value=24, value=24, step=1, key="sim_load_slider")
         
         # 산정식: 24MW일 때 125kg/h 소모 -> 1MW당 (125/24) kg/h
         est_usage = sim_load * (125.0 / 24.0)
         
-        st.markdown(f"<div style='margin-top:20px; padding:15px; border-radius:10px; border:1px solid {border_color};'>", unsafe_allow_html=True)
-        st.markdown(f"<span style='color:{sub_header_color}; font-weight:bold;'>예상 암모니아수 사용량: </span> <span style='color:{sub_header_color}; font-size:1.2rem; font-weight:bold;'>{est_usage:.1f} kg/h</span>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-top:20px; padding:15px; border-radius:10px; border:1px solid {border_color};'><span style='color:{sub_header_color}; font-weight:bold;'>예상 암모니아수 사용량: </span> <span style='color:{sub_header_color}; font-size:1.2rem; font-weight:bold;'>{est_usage:.1f} kg/h</span></div>", unsafe_allow_html=True)
         
     with sim_col2:
         st.markdown(f"<h4 style='color: {sub_header_color};'>입고 일정 예측 결과</h4>", unsafe_allow_html=True)
@@ -407,10 +584,10 @@ with deni_tabs[1]:
             reorder_days = 999
             
         res_col1, res_col2 = st.columns(2)
-        res_col1.metric(label="현재 총 재고 추정치", value=f"{current_stock:,.1f} kg")
+        res_col1.metric(label="현재 재고량", value=f"{current_stock:,.1f} kg")
         
         if days_left != 999:
-            res_col2.metric(label="예상 전량 소진일", value=f"{days_left:.1f} 일")
+            res_col2.metric(label="예상 소진일", value=f"{days_left:.1f} 일")
             
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             if reorder_days > 0:
@@ -419,15 +596,85 @@ with deni_tabs[1]:
                 st.error("🚨 **긴급: 현재 재고가 안전 재고 기준에 미달합니다. 즉시 입고가 필요합니다.**")
         else:
             res_col2.metric(label="예상 전량 소진일", value="-")
-            st.success("✅ ST LOAD가 0 MW로 설정되어 암모니아수가 소모되지 않습니다.")
+            st.success("✅ 열병합발전시설의 미가동으로 암모니아수가 소모되지 않습니다.")
 
-# --- 사이드바 레이아웃 상/하단 분리 ---
-with sidebar_top:
-    st.markdown(f"<div style='font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; color: {sidebar_title_color} !important;'>📊 시스템 요약</div>", unsafe_allow_html=True)
-    st.info("DEMI TANK: 8,000 mm")
-    st.success("정상 운전: Train A")
-    st.markdown("---")
-    st.markdown(f"<p style='color: {sidebar_title_color}; font-weight: bold;'>주요 공정</p>", unsafe_allow_html=True)
-    st.info("R.O 생산: 6 m³/h")
-    st.info("DH 공급: 80 m³/h")
-    st.info("탈질 부하: 120 MW")
+
+# --- 사이드바 ---
+with st.sidebar:
+    st.markdown(f"<div style='font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; color: {sidebar_title_color} !important;'>📊 Summary</div>", unsafe_allow_html=True)
+    
+    # --- 순수제조계통 ---
+    st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>순수제조계통</p>", unsafe_allow_html=True)
+
+    # Determine individual statuses
+    ix_status_string = ""
+    if train_a_running and train_b_running:
+        ix_status_string = "이온교환수지: 'A' & 'B' Train 가동"
+    elif train_a_running:
+        ix_status_string = "이온교환수지: 'A' Train 가동"
+    elif train_b_running:
+        ix_status_string = "이온교환수지: 'B' Train 가동"
+    else:
+        ix_status_string = "이온교환수지: 정지중"
+
+    ro_status_string = "R.O System: 가동중" if ro_running else "R.O System: 정지중"
+
+    # Determine overall status for color
+    is_pure_system_running = train_a_running or train_b_running or ro_running
+    
+    # Combine strings
+    combined_status = f"- {ix_status_string}\n- {ro_status_string}"
+
+    # Display in a single box
+    if is_pure_system_running:
+        st.success(combined_status)
+    else:
+        st.warning(combined_status)
+
+    # --- DH처리계통 ---
+    st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>DH처리계통</p>", unsafe_allow_html=True)
+    
+    dh_status_strings = []
+    if polisher_running:
+        dh_status_strings.append("Polisher: 가동중")
+    else:
+        dh_status_strings.append("Polisher: 정지중")
+    
+    if afm_running:
+        dh_status_strings.append("AFM: 가동중")
+    else:
+        dh_status_strings.append("AFM: 정지중")
+
+    is_dh_system_running = polisher_running or afm_running
+    
+    combined_dh_status = "\n".join([f"- {s}" for s in dh_status_strings])
+
+    if is_dh_system_running:
+        st.success(combined_dh_status)
+    else:
+        st.warning(combined_dh_status)
+
+    # --- 폐수처리계통 ---
+    st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>폐수처리계통</p>", unsafe_allow_html=True)
+    if is_ww_running:
+        st.success("- 가동중")
+    else:
+        st.warning("- 정지중")
+
+    st.markdown("<div style='flex: 1;'></div>", unsafe_allow_html=True)
+    
+    # 테마 선택
+    if 'theme_selector' not in st.session_state:
+        st.session_state.theme_selector = 0
+
+    sac.segmented(
+        items=[
+            sac.SegmentedItem(icon='sun'),
+            sac.SegmentedItem(icon='moon'),
+        ],
+        align='center',
+        size='sm',
+        radius='lg',
+        return_index=True,
+        key='theme_selector'
+    )
