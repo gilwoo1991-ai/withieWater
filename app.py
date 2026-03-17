@@ -1,5 +1,56 @@
 import streamlit as st
 import streamlit_antd_components as sac
+import pandas as pd
+import base64
+
+# --- 데이터 로드 ---
+@st.cache_data(ttl=60)
+def load_data():
+    try:
+        df = pd.read_excel("data.xlsx", sheet_name="Sheet1")
+
+        # 필수 컬럼 존재 여부 확인
+        required_columns = ['Tag', 'Value', 'Update Time']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            st.error(f"Excel 파일에 필수 컬럼이 누락되었습니다: {', '.join(missing_columns)}. 'Tag', 'Value', 'Update Time' 컬럼이 정확한 이름으로 존재하는지 확인해주세요.")
+            return None
+
+        df['Update Time'] = pd.to_datetime(df['Update Time'])
+        latest_data = df.sort_values('Update Time').groupby('Tag').last()
+        return latest_data
+    except FileNotFoundError:
+        st.error("⚠️ data.xlsx 파일을 찾을 수 없습니다. app.py와 같은 폴더에 파일이 있는지 확인해주세요.")
+        return None
+    except PermissionError:
+        st.error("🛑 [Permission Denied] 'data.xlsx' 파일에 접근할 수 없습니다. 파일이 다른 프로그램(예: Excel)에서 열려 있는지 확인하고 닫은 후 다시 시도해주세요.")
+        return None
+    except Exception as e:
+        st.error(f"데이터 로딩 중 예상치 못한 오류가 발생했습니다: {e}")
+        return None
+
+data = load_data()
+
+def get_value(tag, default_value="-"):
+    if data is None:
+        return default_value
+    try:
+        value = data.loc[tag, 'Value']
+        return value
+    except KeyError:
+        return default_value
+
+# --- 이미지 파일을 Base64로 인코딩하는 함수 ---
+@st.cache_data
+def get_image_as_base64(path):
+    try:
+        with open(path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except FileNotFoundError:
+        # 이미지를 찾지 못한 경우, 사용자에게 알림
+        st.warning(f"CI 로고 파일({path})을 찾을 수 없습니다. 앱과 같은 폴더에 파일이 있는지 확인해주세요.")
+        return None
+
 
 # 1. 페이지 전체 설정
 st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 모니터링")
@@ -18,7 +69,32 @@ if theme_selection == "다크 모드":
     sub_header_color = "#ffffff" # 배경 위 소제목: 흰색
     metric_val = "#ffffff"    # 하단 메트릭: 흰색
     sidebar_title_color = "#000000" # 다크모드 사이드바 제목: 검정
+    dh_label_color = "#000000"
     
+    # 다크모드 st.info() 메시지 박스 시인성 개선
+    info_style_override = """
+        [data-testid="stAlert"][data-kind="info"] {
+            background-color: #012A36 !important;
+            border: 1px solid #00d4ff !important;
+            border-radius: 10px !important;
+        }
+        [data-testid="stAlert"][data-kind="info"] * {
+            color: #FFFFFF !important;
+        }
+    """
+
+    # 다크모드 st.success() 메시지 박스 시인성 개선
+    success_style_override = """
+        [data-testid="stAlert"][data-kind="success"] {
+            background-color: #022C17 !important;
+            border: 1px solid #2ECC71 !important;
+            border-radius: 10px !important;
+        }
+        [data-testid="stAlert"][data-kind="success"] * {
+            color: #FFFFFF !important;
+        }
+    """
+
     # ★ 다크모드 전용: 강렬한 네온 효과 유지 ★
     flow_color = "#00ffff" # 형광 시안색 입자
     flow_glow = "0 0 8px #00ffff" # 강한 네온 빛 번짐 효과
@@ -32,6 +108,9 @@ else:
     sub_header_color = "#000000" # 배경 위 소제목: 검정
     metric_val = "#000000"    # 하단 메트릭: 검정
     sidebar_title_color = "#000000" # 화이트모드에서도 검정 유지
+    dh_label_color = "#ffffff"
+    info_style_override = "" # 화이트모드에서는 오버라이드 없음
+    success_style_override = "" # 화이트모드에서는 오버라이드 없음
     
     # ★ 화이트모드 전용: 눈이 편안한 소프트 효과 적용 ★
     flow_color = "#4e9af1" # 부드러운 파란색 입자 (테두리색과 통일)
@@ -212,6 +291,8 @@ st.markdown(f"""
         color: #ff4b4b; border: 2px solid #ff4b4b; border-radius: 4px; 
         padding: 1px 0px; font-size: 0.7rem; font-weight: bold;
     }}
+    {info_style_override}
+    {success_style_override}
 </style>
 """, unsafe_allow_html=True)
 
@@ -231,8 +312,31 @@ def render_tank(name, value, unit, pct):
         </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<h2 style='color: #00d4ff;'>🟢 위드인천에너지 수처리 공정 모니터링</h2>", unsafe_allow_html=True)
+
+# --- 로고 이미지 처리 및 제목 표시 ---
+logo_base64 = get_image_as_base64("ci_logo.png")
+if logo_base64:
+    # 이미지가 있으면 이미지 태그를, 없으면 녹색 동그라미를 사용
+    logo_html = f"<img src='data:image/png;base64,{logo_base64}' style='height: 35px; margin-right: 10px;'>"
+else:
+    logo_html = "🟢"
+
+st.markdown(f"<h2 style='color: #00d4ff; display: flex; align-items: center;'>{logo_html}위드인천에너지 수처리 공정 모니터링</h2>", unsafe_allow_html=True)
 st.divider()
+
+# --- Raw Water Basin 수위 계산 ---
+raw_water_level_val = get_value('Raw_Water_Basin_Level', '3,000')
+try:
+    # If it's already a number, use it directly. If it's a string, convert to float.
+    if isinstance(raw_water_level_val, str):
+        raw_water_level = float(raw_water_level_val.replace(',', ''))
+    else:
+        raw_water_level = float(raw_water_level_val)
+except (ValueError, TypeError):
+    raw_water_level = 3000.0
+
+raw_water_max = 4500  # 최대 수위 4,500mm로 가정
+raw_water_pct = min((raw_water_level / raw_water_max) * 100, 100)
 
 col_left, col_right = st.columns([0.6, 0.4], gap="large")
 
@@ -243,21 +347,27 @@ with col_left:
     with pure_tabs[0]:
         st.markdown("<div class='sub-header-final'>1-1) 이온교환수지</div>", unsafe_allow_html=True)
         
-        # Individual train selection using checkboxes for toggle functionality
-        cols = st.columns([1, 1, 5])
-        with cols[0]:
-            train_a_running = st.checkbox("Train A", value=True, key="ix_train_a")
-        with cols[1]:
-            train_b_running = st.checkbox("Train B", value=False, key="ix_train_b")
+        # 데이터 기반으로 Train A/B 가동 상태 결정
+        try:
+            train_a_running = float(get_value('Train_A_Flow', '0')) > 0
+        except (ValueError, TypeError):
+            train_a_running = False
+
+        try:
+            train_b_running = float(get_value('Train_B_Flow', '0')) > 0
+        except (ValueError, TypeError):
+            train_b_running = False
+        
+        st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
 
         # Define styles and values based on state
         train_a_glow = "running-glow" if train_a_running else ""
         train_a_pipe = "line-h-flow" if train_a_running else "line-h-solid"
-        train_a_flow = "9 m³/h" if train_a_running else "0 m³/h"
+        train_a_flow = f"{get_value('Train_A_Flow', '9')} m³/h" if train_a_running else "0 m³/h"
         
         train_b_glow = "running-glow" if train_b_running else ""
         train_b_pipe = "line-h-flow" if train_b_running else "line-h-solid"
-        train_b_flow = "9 m³/h" if train_b_running else "0 m³/h"
+        train_b_flow = f"{get_value('Train_B_Flow', '9')} m³/h" if train_b_running else "0 m³/h"
 
         # Determine manifold path styles
         path_a_class = "path-up-center" if train_a_running else "path-up-center-solid"
@@ -270,13 +380,13 @@ with col_left:
         # Layout
         ix_r = [1.2, 0.4, 1.0, 0.4, 1.0, 0.5, 1.1]
         ra = st.columns(ix_r)
-        with ra[2]: st.markdown(f"<div class='process-container {train_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.2μS/cm</div></div>", unsafe_allow_html=True)
+        with ra[2]: st.markdown(f"<div class='process-container {train_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('Train_A_2B3T_Conductivity', '0.2')}μS/cm</div></div>", unsafe_allow_html=True)
         with ra[3]: st.markdown(f"<div class='{train_a_pipe}'></div>", unsafe_allow_html=True)
-        with ra[4]: st.markdown(f"<div class='process-container {train_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.06μS/cm</div></div>", unsafe_allow_html=True)
+        with ra[4]: st.markdown(f"<div class='process-container {train_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train A</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('Train_A_MBP_Conductivity', '0.06')}μS/cm</div></div>", unsafe_allow_html=True)
         with ra[5]: st.markdown(f"""<div style='position:absolute; width:150%; text-align:center; bottom:0px; z-index:25;'><div class='flow-data-box'> {train_a_flow}</div></div><div class='{train_a_pipe}'></div>""", unsafe_allow_html=True)
         
         rm = st.columns(ix_r)
-        with rm[0]: st.markdown(f"""<div class="basin-visual"><div class="basin-water" style="height: 65%;"></div><div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Raw Water Basin</div><div style="z-index:15; color:#eee; font-size:0.7rem; font-weight:bold; background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:8px;">3,000 mm</div></div>""", unsafe_allow_html=True)
+        with rm[0]: st.markdown(f"""<div class="basin-visual"><div class="basin-water" style="height: {raw_water_pct}%;"></div><div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Raw Water Basin</div><div style="z-index:15; color:#eee; font-size:0.7rem; font-weight:bold; background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:8px;">{get_value('Raw_Water_Basin_Level', '3,000')} mm</div></div>""", unsafe_allow_html=True)
         with rm[1]: st.markdown(f"""
             <div class='manifold-anchor'>
                 <div class='{path_a_class}'>
@@ -299,53 +409,63 @@ with col_left:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        with rm[6]: render_tank("DEMI TANK", "8,000", "mm", 80)
+        with rm[6]: render_tank("DEMI TANK", get_value('DEMI_TANK_Level', '8,000'), "mm", 80)
         
         rb = st.columns(ix_r)
-        with rb[2]: st.markdown(f"<div class='process-container {train_b_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
+        with rb[2]: st.markdown(f"<div class='process-container {train_b_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>2B3T</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('Train_B_2B3T_Conductivity', '-')} μS/cm</div></div>", unsafe_allow_html=True)
         with rb[3]: st.markdown(f"<div class='{train_b_pipe}'></div>", unsafe_allow_html=True)
-        with rb[4]: st.markdown(f"<div class='process-container {train_b_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
+        with rb[4]: st.markdown(f"<div class='process-container {train_b_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Train B</div><div style='color:#888; font-size:0.8rem;'>MBP</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('Train_B_MBP_Conductivity', '-')} μS/cm</div></div>", unsafe_allow_html=True)
         with rb[5]: st.markdown(f"""<div style='position:absolute; width:150%; text-align:center; top: 70px; z-index:25;'><div class='flow-data-box'> {train_b_flow}</div></div><div class='{train_b_pipe}'></div>""", unsafe_allow_html=True)
     with pure_tabs[1]:
         st.markdown("<div class='sub-header-final'>1-2) R.O System</div>", unsafe_allow_html=True)
         
-        ro_running = st.checkbox("R.O System 가동", value=True, key="ro_system_running")
+        # 데이터 기반으로 R.O System 가동 상태 결정
+        try:
+            ro_running = float(get_value('RO_System_Flow', '0')) > 0
+        except (ValueError, TypeError):
+            ro_running = False
 
         st.markdown("<div style='height: 125px;'></div>", unsafe_allow_html=True)
 
         ro_glow = "running-glow" if ro_running else ""
         ro_pipe = "line-h-flow" if ro_running else "line-h-solid"
-        ro_flow = "6 m³/h" if ro_running else "0 m³/h"
+        ro_flow = f"{get_value('RO_System_Flow', '6')} m³/h" if ro_running else "0 m³/h"
         
         ro_r = [1.2, 0.4, 1.0, 0.4, 1.0, 0.5, 1.1]
         rr = st.columns(ro_r)
-        with rr[0]: st.markdown(f"""<div class="basin-visual"><div class="basin-water" style="height: 50%;"></div><div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Raw Water Basin</div><div style="z-index:15; color:#eee; font-size:0.7rem; font-weight:bold; background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:8px;">3,000 mm</div></div>""", unsafe_allow_html=True)
+        with rr[0]: st.markdown(f"""<div class="basin-visual"><div class="basin-water" style="height: {raw_water_pct}%;"></div><div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Raw Water Basin</div><div style="z-index:15; color:#eee; font-size:0.7rem; font-weight:bold; background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:8px;">{get_value('Raw_Water_Basin_Level', '3,000')} mm</div></div>""", unsafe_allow_html=True)
         with rr[1]: st.markdown(f"<div class='{ro_pipe}'></div>", unsafe_allow_html=True)
         with rr[2]: st.markdown(f"<div class='process-container {ro_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold; line-height:1.2;'>Micro & Carbon<br>Filter</div></div>", unsafe_allow_html=True)
         with rr[3]: st.markdown(f"<div class='{ro_pipe}'></div>", unsafe_allow_html=True)
-        with rr[4]: st.markdown(f"<div class='process-container {ro_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>R.O Units</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>7 µS/cm</div></div>", unsafe_allow_html=True)
+        with rr[4]: st.markdown(f"<div class='process-container {ro_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>R.O Units</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('RO_Units_Conductivity', '7')} µS/cm</div></div>", unsafe_allow_html=True)
         with rr[5]: st.markdown(f"""<div style='position:relative; height:110px;'><div style='position:absolute; width:130%; text-align:center; bottom:70px; white-space: nowrap; z-index:25;'><div class='flow-data-box'>{ro_flow}</div></div><div class='{ro_pipe}'></div></div>""", unsafe_allow_html=True)
         
         with rr[6]: 
-            ro_tank_current = 1500  # 원하시는 현재 수위(mm)를 여기에 입력하세요.
+            ro_tank_current = float(get_value('RO_TANK_Level', 1500))  # 원하시는 현재 수위(mm)를 여기에 입력하세요.
             ro_tank_max = 2250
             ro_tank_pct = (ro_tank_current / ro_tank_max) * 100
             ro_tank_pct = min(ro_tank_pct, 100) 
-            render_tank("R.O TANK", f"{ro_tank_current:,}", "mm", ro_tank_pct)
+            render_tank("R.O TANK", f"{ro_tank_current:,.0f}", "mm", ro_tank_pct)
 
 # 2. DH처리계통
 with col_right:
     st.markdown("### 2. DH처리계통")
-    dh_tab_main = st.tabs([" 2-1) DH 처리 계통"])
+    dh_tab_main = st.tabs([" DH 처리 계통"])
     with dh_tab_main[0]:
-        st.markdown("<div class='sub-header-final'>2-1) DH 처리 계통</div>", unsafe_allow_html=True)
+        st.markdown("<div class='sub-header-final'>DH 처리 계통</div>", unsafe_allow_html=True)
 
-        # Individual line selection using checkboxes for toggle functionality
-        cols_dh = st.columns([2, 2, 5])
-        with cols_dh[0]:
-            polisher_running = st.checkbox("Polisher", value=True, key="dh_polisher")
-        with cols_dh[1]:
-            afm_running = st.checkbox("AFM", value=False, key="dh_afm")
+        # 데이터 기반으로 Polisher/AFM 가동 상태 결정
+        try:
+            polisher_running = float(get_value('Polisher_Flow', '0')) > 0
+        except (ValueError, TypeError):
+            polisher_running = False
+        
+        try:
+            afm_running = float(get_value('AFM_Flow', '0')) > 0
+        except (ValueError, TypeError):
+            afm_running = False
+
+        st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
 
         # Determine state based on selection
         # (The checkbox return values are now directly used)
@@ -353,11 +473,11 @@ with col_right:
         # Define styles and values based on state
         polisher_glow = "running-glow" if polisher_running else ""
         polisher_pipe = "line-h-flow" if polisher_running else "line-h-solid"
-        polisher_flow = "80 m³/h" if polisher_running else "0 m³/h"
+        polisher_flow = f"{get_value('Polisher_Flow', '80')} m³/h" if polisher_running else "0 m³/h"
 
         afm_glow = "running-glow" if afm_running else ""
         afm_pipe = "line-h-flow" if afm_running else "line-h-solid"
-        afm_flow = "80 m³/h" if afm_running else "0 m³/h"
+        afm_flow = f"{get_value('AFM_Flow', '80')} m³/h" if afm_running else "0 m³/h"
 
         # Determine manifold path styles for DH system
         dh_path_polisher_class = "path-up-center" if polisher_running else "path-up-center-solid"
@@ -370,11 +490,11 @@ with col_right:
         # Layout
         dh_r = [1.0, 0.4, 1.2, 0.4, 1.0]
         dra = st.columns(dh_r)
-        with dra[2]: st.markdown(f"""<div class='process-container {polisher_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Polisher</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>0.08μS/cm</div></div>""", unsafe_allow_html=True)
+        with dra[2]: st.markdown(f"""<div class='process-container {polisher_glow}'><div style='color:{title_color}; font-size:1.2rem; font-weight:bold;'>Polisher</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('Polisher_Conductivity', '0.08')}μS/cm</div></div>""", unsafe_allow_html=True)
         with dra[3]: st.markdown(f"""<div style='position:absolute; width:200%; text-align:center; bottom:0px; z-index:25;'><div class='flow-data-box'> {polisher_flow}</div></div><div class='{polisher_pipe}'></div>""", unsafe_allow_html=True)
         
         drm = st.columns(dh_r)
-        with drm[0]: st.markdown(f"<div class='process-container'><div style='color:#888; font-size:0.8rem;'>공급 (Return)</div></div>", unsafe_allow_html=True)
+        with drm[0]: st.markdown(f"<div class='process-container'><div style='color:{dh_label_color}; font-size:1.1rem; font-weight:bold;'>DH수 Return</div></div>", unsafe_allow_html=True)
         with drm[1]: st.markdown(f"""
             <div class='manifold-anchor'>
                 <div class='{dh_path_polisher_class}'>
@@ -397,22 +517,15 @@ with col_right:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        with drm[4]: st.markdown(f"<div class='process-container'><div style='color:#888; font-size:0.8rem;'>지역 공급</div></div>", unsafe_allow_html=True)
+        with drm[4]: st.markdown(f"<div class='process-container'><div style='color:{dh_label_color}; font-size:1.1rem; font-weight:bold;'>지역 공급</div></div>", unsafe_allow_html=True)
         
         drb = st.columns(dh_r)
-        with drb[2]: st.markdown(f"<div class='process-container {afm_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>AFM</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'> - μS/cm</div></div>", unsafe_allow_html=True)
-        with drb[3]: st.markdown(f"""<div style='position:absolute; width:200%; text-align:center; bottom:-50px; z-index:25;'><div class='flow-data-box'> {afm_flow}</div></div><div class='{afm_pipe}'></div>""", unsafe_allow_html=True)
+        with drb[2]: st.markdown(f"<div class='process-container {afm_glow}'><div style='color:{title_color}; font-size:1.2rem; font-weight:bold;'>AFM</div><div class='data-box' style='color:#00d4ff; margin-top:5px;'>{get_value('AFM_Conductivity', '-')} μS/cm</div></div>", unsafe_allow_html=True)
+        with drb[3]: st.markdown(f"""<div style='position:absolute; width:200%; text-align:center; bottom:-55px; z-index:25;'><div class='flow-data-box'> {afm_flow}</div></div><div class='{afm_pipe}'></div>""", unsafe_allow_html=True)
 
 # 3. 폐수처리계통
 st.divider()
 st.markdown("### 3. 폐수처리계통")
-
-# 폐수처리 수위 선택기
-level_options = ["L/L", "L", "H", "H/H"]
-selected_level = st.radio("폐수조 수위 상태 선택", options=level_options, index=0, horizontal=True, label_visibility="collapsed")
-
-# 수위에 따른 설정값 및 가동 상태 결정
-is_ww_running = selected_level != "L/L"
 
 level_settings = {
     "L/L": {"height": 15, "active_label": "L/L"},
@@ -420,19 +533,51 @@ level_settings = {
     "H": {"height": 75, "active_label": "H"},
     "H/H": {"height": 100, "active_label": "H/H"},
 }
+level_options = ["L/L", "L", "H", "H/H"]
 
-water_height = level_settings[selected_level]["height"]
-active_label = level_settings[selected_level]["active_label"]
+try:
+    is_ww_running = float(get_value('WW_Flow_Rate', '0')) > 0
+except (ValueError, TypeError):
+    is_ww_running = False
 
-# 가동 상태에 따른 스타일 및 데이터 정의
+# --- 각 Pond 별 데이터 처리 ---
+def get_pond_details(tag_name):
+    status = get_value(tag_name, 'L/L')
+    if status not in level_options:
+        status = "L/L"
+    height = level_settings[status]["height"]
+    active_label = level_settings[status]["active_label"]
+    return height, active_label
+
+ww_pond_height, ww_pond_label = get_pond_details('W_WATER_POND_Level_Status')
+clarified_pond_height, clarified_pond_label = get_pond_details('Clarified_W_POND_Level_Status')
+filtered_pond_height, filtered_pond_label = get_pond_details('Filtered_Pond_Level_Status')
+
+# --- Pressure Filter 및 가동 상태에 따른 스타일 정의 ---
+pressure_filter_status = get_value('Pressure_Filter_Status', 'STOP').upper()
+is_filter_a_running = is_ww_running and (pressure_filter_status == 'A')
+is_filter_b_running = is_ww_running and (pressure_filter_status == 'B')
+
+# 공통 가동 상태
 ww_flow_class = "line-h-flow" if is_ww_running else "line-h-solid"
 ww_glow_class = "running-glow" if is_ww_running else ""
-ww_flow_rate = "5 m³/h" if is_ww_running else "0 m³/h"
-filter_a_status_text = "RUNNING" if is_ww_running else "STOPPED"
-filter_a_status_color = "#00ff00" if is_ww_running else "#ff4b4b"
-ww_outlet_a_pipe_class = "outlet-v-up" if is_ww_running else "outlet-v-solid"
-ww_outlet_b_pipe_class = "outlet-v-down" if is_ww_running else "outlet-v-solid"
+ww_flow_rate = f"{get_value('WW_Flow_Rate', '5')} m³/h" if is_ww_running else "0 m³/h"
 
+# 필터 A 상태
+filter_a_status_text = "RUNNING" if is_filter_a_running else "STOPPED"
+filter_a_status_color = "#00ff00" if is_filter_a_running else "#ff4b4b"
+filter_a_glow = "running-glow" if is_filter_a_running else ""
+filter_a_h_pipe = "line-h-flow" if is_filter_a_running else "line-h-solid"
+ww_filter_a_in_pipe = "outlet-v-up" if is_filter_a_running else "outlet-v-solid"
+ww_filter_a_out_pipe = "outlet-v-down" if is_filter_a_running else "outlet-v-solid"
+
+# 필터 B 상태
+filter_b_status_text = "RUNNING" if is_filter_b_running else "STOPPED"
+filter_b_status_color = "#00ff00" if is_filter_b_running else "#ff4b4b"
+filter_b_glow = "running-glow" if is_filter_b_running else ""
+filter_b_h_pipe = "line-h-flow" if is_filter_b_running else "line-h-solid"
+ww_filter_b_in_pipe = "outlet-v-down" if is_filter_b_running else "outlet-v-solid"
+ww_filter_b_out_pipe = "outlet-v-up" if is_filter_b_running else "outlet-v-solid"
 
 def get_alarm_labels_html(active_label, box_bg, is_filtered_pond=False):
     """선택된 레벨에 해당하는 알람 라벨의 HTML만 생성합니다."""
@@ -450,71 +595,77 @@ def get_alarm_labels_html(active_label, box_bg, is_filtered_pond=False):
     return labels.get(active_label, "")
 
 # 각 POND에 맞는 알람 HTML 생성
-ww_pond_alarms = get_alarm_labels_html(active_label, box_bg)
-clarified_pond_alarms = get_alarm_labels_html(active_label, box_bg)
-filtered_pond_alarms = get_alarm_labels_html(active_label, box_bg, is_filtered_pond=True)
+ww_pond_alarms = get_alarm_labels_html(ww_pond_label, box_bg)
+clarified_pond_alarms = get_alarm_labels_html(clarified_pond_label, box_bg)
+filtered_pond_alarms = get_alarm_labels_html(filtered_pond_label, box_bg, is_filtered_pond=True)
 
-
-ww_r = [1.2, 0.4, 1.2, 0.4, 1.2, 0.4, 1.2, 0.4, 1.2, 0.5]
+ww_r = [1.0, 0.35, 1.0, 0.35, 1.1, 0.3, 1.1, 0.3, 1.1, 0.6, 0.2]
 
 w_ra = st.columns(ww_r)
-with w_ra[5]: st.markdown(f"<div class='{ww_flow_class}'></div>", unsafe_allow_html=True)
-with w_ra[6]: st.markdown(f"<div class='process-container {ww_glow_class}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Pressure Filter A</div><div style='color:{filter_a_status_color}; font-size:0.75rem; font-weight:bold;'>{filter_a_status_text}</div></div>", unsafe_allow_html=True)
-with w_ra[7]: st.markdown(f"<div class='{ww_flow_class}'></div>", unsafe_allow_html=True)
+with w_ra[5]: st.markdown(f"<div class='{filter_a_h_pipe}'></div>", unsafe_allow_html=True)
+with w_ra[6]: st.markdown(f"<div class='process-container {filter_a_glow}'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Pressure Filter A</div><div style='color:{filter_a_status_color}; font-size:0.75rem; font-weight:bold;'>{filter_a_status_text}</div></div>", unsafe_allow_html=True)
+with w_ra[7]: st.markdown(f"<div class='{filter_a_h_pipe}'></div>", unsafe_allow_html=True)
 
 w_rm = st.columns(ww_r)
 with w_rm[0]: st.markdown(f"""
     <div class="basin-visual" style="margin-top:-28px;">
-        <div class="basin-water" style="height: {water_height}%;"></div>
+        <div class="basin-water" style="height: {ww_pond_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">W/WATER POND</div>
+        <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : {get_value('W_WATER_POND_pH', '7.0')}</div>
         {ww_pond_alarms}
     </div>
     """, unsafe_allow_html=True)
 with w_rm[1]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-28px;'><div class='{ww_flow_class}' style='margin-top:54px;'></div></div>""", unsafe_allow_html=True)
-with w_rm[2]: st.markdown(f"<div class='process-container {ww_glow_class}' style='margin-top:-28px;'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Reaction Tank</div><div style='color:{data_color}; font-weight:bold;'>pH : 7.0</div></div>", unsafe_allow_html=True)
+with w_rm[2]: st.markdown(f"<div class='process-container {ww_glow_class}' style='margin-top:-28px;'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Reaction Tank</div><div style='color:{data_color}; font-weight:bold;'>pH : {get_value('Reaction_Tank_pH', '7.0')}</div></div>", unsafe_allow_html=True)
 with w_rm[3]: st.markdown(f"<div class='{ww_flow_class}' style='margin-top:26px;'></div>", unsafe_allow_html=True)
 with w_rm[4]: st.markdown(f"""
     <div class="basin-visual {ww_glow_class}" style="margin-top:-28px;">
-        <div class="basin-water" style="height: {water_height}%;"></div>
+        <div class="basin-water" style="height: {clarified_pond_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Clarified W. POND</div>
-        <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : 7.2</div>
+        <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : {get_value('Clarified_W_POND_pH', '7.2')}</div>
         {clarified_pond_alarms}
     </div>
     """, unsafe_allow_html=True)
-with w_rm[5]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='{ww_outlet_a_pipe_class}' style='top:-28px; height:100%; left:0; right:auto;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='outlet-v-solid' style='height:100%; left:0; right:auto;'></div></div><div class='path-down-center-solid'><div class='horizontal'></div></div></div>""", unsafe_allow_html=True)
-with w_rm[7]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='{ww_outlet_b_pipe_class}' style='top:-28px; height:100%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='outlet-v-solid' style='height:100%;'></div></div></div>""", unsafe_allow_html=True)
+with w_rm[5]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:24px; left:0px; width:100%; height:50%;'><div class='{ww_filter_a_in_pipe}' style='top:-28px; height:100%; left:0; right:auto;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='{ww_filter_b_in_pipe}' style='top:53px; height:100%; left:0; right:auto;'></div></div></div>""", unsafe_allow_html=True)
+with w_rm[7]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='{ww_filter_a_out_pipe}' style='top:-28px; height:100%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='{ww_filter_b_out_pipe}' style='top:53px; height:100%;'></div></div></div>""", unsafe_allow_html=True)
 with w_rm[8]: st.markdown(f"""
     <div class="basin-visual" style="margin-top:-28px;">
-        <div class="basin-water" style="height: {water_height}%;"></div>
+        <div class="basin-water" style="height: {filtered_pond_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Filtered Pond</div>
-        <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : 7.2</div>
+        <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : {get_value('Filtered_Pond_pH', '7.2')}</div>
         {filtered_pond_alarms}
     </div>
     """, unsafe_allow_html=True)
 with w_rm[9]: st.markdown(f"""
     <div style='position:relative; height: 110px; margin-top:-28px;'>
         <div class='{ww_flow_class}' style='margin-top: 54px;'></div>
-        <div style='position:absolute; width:100%; text-align:center; top: -35px; z-index:25;'>
+        <div style='position:absolute; width:100%; text-align:center; top: -40px; z-index:25;'>
              <div class='flow-data-box'>{ww_flow_rate}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 w_rb = st.columns(ww_r)
-with w_rb[6]: st.markdown(f"<div class='process-container' style='margin-top:-85px;'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Pressure Filter B</div><div style='color:#ff4b4b; font-size:0.75rem; font-weight:bold;'>STOPPED</div></div>", unsafe_allow_html=True)
-with w_rb[7]: st.markdown("<div style='margin-top:-85px;'><div class='line-h-solid'></div></div>", unsafe_allow_html=True)
+with w_rb[5]: st.markdown(f"<div style='margin-top:-85px;'><div class='{filter_b_h_pipe}'></div></div>", unsafe_allow_html=True)
+with w_rb[6]: st.markdown(f"<div class='process-container {filter_b_glow}' style='margin-top:-85px;'><div style='color:{title_color}; font-size:1.1rem; font-weight:bold;'>Pressure Filter B</div><div style='color:{filter_b_status_color}; font-size:0.75rem; font-weight:bold;'>{filter_b_status_text}</div></div>", unsafe_allow_html=True)
+with w_rb[7]: st.markdown(f"<div style='margin-top:-85px;'><div class='{filter_b_h_pipe}'></div></div>", unsafe_allow_html=True)
 
 # ★ 4. 탈질 계통 ★
 st.divider()
 st.markdown("### 4. 탈질 계통")
 
+# 변수 사전 정의 (탱크 A, B 레벨 및 현재 재고량)
+tank_a_level = float(get_value('NH4OH_Tank_A_Level', 80.1))
+tank_b_level = float(get_value('NH4OH_Tank_B_Level', 80.5))
+# 재고 산출식: (탱크 A 레벨 + 탱크 B 레벨) * 120.55 - 5500
+current_stock = (tank_a_level + tank_b_level) * 120.55 - 5500
+if current_stock < 0:
+    current_stock = 0
+
 denitrification_tabs = st.tabs([" 4-1) 탈질설비계통", " 4-2) ST LOAD 기반 입고 시기 예측"])
 
 with denitrification_tabs[0]:
     st.markdown("<div class='sub-header-final'>4-1) 탈질 설비 계통</div>", unsafe_allow_html=True)
-    # 변수 사전 정의 (탱크 A, B 레벨)
-    tank_a_level = 80.1
-    tank_b_level = 80.5
 
     col4_l, col4_m, col4_r = st.columns([0.2, 1.4, 0.8])
 
@@ -524,17 +675,30 @@ with denitrification_tabs[0]:
         render_tank("NH4OH Tank B", f"{tank_b_level}", "%", tank_b_level)
 
     with col4_m:
-        st.markdown("""
+        # 데이터 기반으로 암모니아수 주입량 및 가동 상태 결정
+        nh4oh_consumption_val = get_value('NH4OH_Consumption', '0')
+        try:
+            is_den_running = float(nh4oh_consumption_val) > 0
+        except (ValueError, TypeError):
+            is_den_running = False
+        
+        nh4oh_consumption_text = f"{nh4oh_consumption_val} kg/h"
+
+        # 가동 상태에 따른 파이프 스타일 결정
+        den_v_pipe_class = "outlet-v-up" if is_den_running else "outlet-v-solid"
+        den_h_pipe_class = "line-h-flow" if is_den_running else "line-h-solid"
+
+        st.markdown(f"""
             <div style="position: relative; height: 250px; width: 100%;">
                 <div class="line-h-solid" style="position: absolute; left: -20px; top: 25px; width: 50px;"></div>
                 <div class="line-h-solid" style="position: absolute; left: -20px; top: 150px; width: 50px;"></div>
                 <div class="outlet-v-solid" style="position: absolute; left: 30px; top: 79px; height: 62px;"></div>
                 <div class="outlet-v-solid" style="position: absolute; left: 30px; top: 143px; height: 63px;"></div>
                 <div class="line-h-solid" style="position: absolute; left: 30px; top: 87px; width: 40px;"></div>
-                <div class="outlet-v-up" style="position: absolute; left: 70px; top: 25px; height: 119px;"></div>
-                <div class="line-h-flow" style="position: absolute; left: 70px; top: -30px; width: 200px;"></div>
+                <div class="{den_v_pipe_class}" style="position: absolute; left: 70px; top: 25px; height: 119px;"></div>
+                <div class="{den_h_pipe_class}" style="position: absolute; left: 70px; top: -30px; width: 200px;"></div>
                 <div style="position: absolute; left: 280px; top: 13px; z-index: 25;">
-                    <div class="flow-data-box" style="font-size: 1.1rem; padding: 3px 10px;">120 kg/h</div>
+                    <div class="flow-data-box" style="font-size: 1.1rem; padding: 3px 10px;">{nh4oh_consumption_text}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -542,24 +706,31 @@ with denitrification_tabs[0]:
     with col4_r:
         st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
         m_cols = st.columns(2)
-        m_cols[0].metric("ST LOAD", "24 MW")
-        m_cols[1].metric("NOx", "15 ppm")
+        # 데이터 기반으로 ST LOAD, NOx 메트릭 표시
+        st_load_val = get_value('ST_LOAD', '24')
+        nox_val = get_value('NOx', '15')
+        m_cols[0].metric("ST LOAD", f"{st_load_val} MW")
+        m_cols[1].metric("NOx", f"{nox_val} ppm")
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+        st.metric("현재 재고량", f"{current_stock:,.1f} kg")
 
 with denitrification_tabs[1]:
     st.markdown("<div class='sub-header-final'>4-2) ST LOAD 기반 입고 시기 예측</div>", unsafe_allow_html=True)
     st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-
-    # 변수 사전 정의 (탱크 A, B 레벨)
-    tank_a_level = 80.1
-    tank_b_level = 80.5
 
     sim_col1, sim_col2 = st.columns([0.4, 0.6], gap="large")
 
     with sim_col1:
         st.markdown(f"<h4 style='color: {sub_header_color};'>시뮬레이션 설정</h4>", unsafe_allow_html=True)
         
+        # 현재 ST LOAD 값을 슬라이더 기본값으로 설정
+        try:
+            st_load_default = int(float(get_value('ST_LOAD', '24')))
+        except (ValueError, TypeError):
+            st_load_default = 24
+
         # 슬라이더: 예상 ST LOAD (최대 24MW)
-        sim_load = st.slider("Steam Turbin LOAD (MW)", min_value=0, max_value=24, value=24, step=1, key="sim_load_slider")
+        sim_load = st.slider("Steam Turbin LOAD (MW)", min_value=0, max_value=24, value=st_load_default, step=1, key="sim_load_slider")
         
         # 산정식: 24MW일 때 125kg/h 소모 -> 1MW당 (125/24) kg/h
         est_usage = sim_load * (125.0 / 24.0)
@@ -568,11 +739,6 @@ with denitrification_tabs[1]:
         
     with sim_col2:
         st.markdown(f"<h4 style='color: {sub_header_color};'>입고 일정 예측 결과</h4>", unsafe_allow_html=True)
-        
-        # 재고 산출식: (탱크 A 레벨 + 탱크 B 레벨) * 120.55 - 5500
-        current_stock = (tank_a_level + tank_b_level) * 120.55 - 5500
-        if current_stock < 0:
-            current_stock = 0
         
         if est_usage > 0:
             # 예상 소진일 = 현재 재고 / (시간당 소모량 * 24시간)
@@ -596,6 +762,7 @@ with denitrification_tabs[1]:
                 st.error("🚨 **긴급: 현재 재고가 안전 재고 기준에 미달합니다. 즉시 입고가 필요합니다.**")
         else:
             res_col2.metric(label="예상 전량 소진일", value="-")
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             st.success("✅ 열병합발전시설의 미가동으로 암모니아수가 소모되지 않습니다.")
 
 
