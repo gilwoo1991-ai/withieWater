@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
 import base64
+import re
 
 # --- 데이터 로드 ---
 @st.cache_data(ttl=60)
@@ -284,7 +285,7 @@ st.markdown(f"""
     
     /* 메트릭 시인성 극대화 */
     [data-testid="stMetricLabel"] * {{ font-size: 1.3rem !important; font-weight: 900 !important; color: {sub_header_color} !important; }}
-    [data-testid="stMetricValue"] {{ font-size: 2.5rem !important; font-weight: 900 !important; color: {metric_val} !important; }}
+    [data-testid="stMetricValue"] {{ font-size: 2.5rem !important; font-weight: 900 !important; }}
 
     .alarm-label {{
         position: absolute; width: 30px; text-align: center; z-index: 20; 
@@ -527,14 +528,6 @@ with col_right:
 st.divider()
 st.markdown("### 3. 폐수처리계통")
 
-level_settings = {
-    "L/L": {"height": 15, "active_label": "L/L"},
-    "L": {"height": 40, "active_label": "L"},
-    "H": {"height": 75, "active_label": "H"},
-    "H/H": {"height": 100, "active_label": "H/H"},
-}
-level_options = ["L/L", "L", "H", "H/H"]
-
 try:
     is_ww_running = float(get_value('WW_Flow_Rate', '0')) > 0
 except (ValueError, TypeError):
@@ -542,11 +535,13 @@ except (ValueError, TypeError):
 
 # --- 각 Pond 별 데이터 처리 ---
 def get_pond_details(tag_name):
-    status = get_value(tag_name, 'L/L')
-    if status not in level_options:
-        status = "L/L"
-    height = level_settings[status]["height"]
-    active_label = level_settings[status]["active_label"]
+    status = get_value(tag_name, 'Normal')
+    if status == 'H/H':
+        height = 75  # H 레벨 높이
+        active_label = 'H/H'
+    else:
+        height = 15  # L/L 레벨 높이
+        active_label = None
     return height, active_label
 
 ww_pond_height, ww_pond_label = get_pond_details('W_WATER_POND_Level_Status')
@@ -629,7 +624,7 @@ with w_rm[4]: st.markdown(f"""
 with w_rm[5]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:24px; left:0px; width:100%; height:50%;'><div class='{ww_filter_a_in_pipe}' style='top:-28px; height:100%; left:0; right:auto;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='{ww_filter_b_in_pipe}' style='top:53px; height:100%; left:0; right:auto;'></div></div></div>""", unsafe_allow_html=True)
 with w_rm[7]: st.markdown(f"""<div class='manifold-anchor' style='margin-top:-50px;'><div style='position:absolute; top:25px; left:0px; width:100%; height:50%;'><div class='{ww_filter_a_out_pipe}' style='top:-28px; height:100%;'></div></div><div style='position:absolute; bottom:0; left:0; width:100%; height:60%;'><div class='{ww_filter_b_out_pipe}' style='top:53px; height:100%;'></div></div></div>""", unsafe_allow_html=True)
 with w_rm[8]: st.markdown(f"""
-    <div class="basin-visual" style="margin-top:-28px;">
+    <div class="basin-visual {ww_glow_class}" style="margin-top:-28px;">
         <div class="basin-water" style="height: {filtered_pond_height}%;"></div>
         <div style="z-index:15; color:{title_color}; font-size:1.1rem; font-weight:bold; margin-bottom:5px;">Filtered Pond</div>
         <div style="z-index:15; color:{data_color}; font-weight:bold;">pH : {get_value('Filtered_Pond_pH', '7.2')}</div>
@@ -706,13 +701,39 @@ with denitrification_tabs[0]:
     with col4_r:
         st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
         m_cols = st.columns(2)
-        # 데이터 기반으로 ST LOAD, NOx 메트릭 표시
-        st_load_val = get_value('ST_LOAD', '24')
-        nox_val = get_value('NOx', '15')
-        m_cols[0].metric("ST LOAD", f"{st_load_val} MW")
-        m_cols[1].metric("NOx", f"{nox_val} ppm")
+        # 데이터 기반으로 ST LOAD, NOx 메트릭 표시 및 NOx 값에 따른 색상 분기 처리
+        st_load_val = get_value('ST_LOAD', '24') # 표시용
+        nox_val_str = get_value('NOx', '15') # 표시용
+        nox_val_num = 15.0 # 로직 처리용 기본값
+
+        # [수정] 데이터 파싱 로직 강화: 문자열에 포함된 숫자만 정확히 추출
+        try:
+            # 값에서 숫자(소수점 포함) 부분만 찾아내어 float으로 변환
+            match = re.search(r'(\d+\.?\d*)', str(nox_val_str))
+            if match:
+                nox_val_num = float(match.group(1))
+        except (ValueError, TypeError, AttributeError):
+            # 파싱 실패 시 기본값 사용
+            nox_val_num = 15.0
+
+        # NOx 값에 따라 색상 결정
+        if nox_val_num >= 30:
+            nox_color = "#ff4b4b"  # 빨간색
+        elif nox_val_num >= 20:
+            nox_color = "#ffc107"  # 노란색
+        else:
+            nox_color = metric_val # 기본 메트릭 색상
+
+        m_cols[0].markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">ST LOAD</div><div style="font-size: 2.5rem; font-weight: 900; color: {metric_val};">{st_load_val} MW</div></div>', unsafe_allow_html=True)
+        # 사용자 정의 HTML로 NOx 메트릭 표시
+        m_cols[1].markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">NOx</div><div style="font-size: 2.5rem; font-weight: 900; color: {nox_color} !important;">{nox_val_str} ppm</div></div>', unsafe_allow_html=True)
         st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-        st.metric("현재 재고량", f"{current_stock:,.1f} kg")
+        
+        # 재고량에 따른 색상 결정
+        stock_color = "#ff4b4b" if current_stock < 6500 else metric_val
+
+        # 사용자 정의 HTML로 재고량 메트릭 표시
+        st.markdown(f'''<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">현재 재고량</div><div style="font-size: 2.5rem; font-weight: 900; color: {stock_color} !important;">{current_stock:,.1f} kg</div></div>''', unsafe_allow_html=True)
 
 with denitrification_tabs[1]:
     st.markdown("<div class='sub-header-final'>4-2) ST LOAD 기반 입고 시기 예측</div>", unsafe_allow_html=True)
@@ -750,10 +771,15 @@ with denitrification_tabs[1]:
             reorder_days = 999
             
         res_col1, res_col2 = st.columns(2)
-        res_col1.metric(label="현재 재고량", value=f"{current_stock:,.1f} kg")
+
+        # 재고량에 따른 색상 결정 (동일한 로직 재사용)
+        stock_color = "#ff4b4b" if current_stock < 6500 else metric_val
+        
+        # 사용자 정의 HTML로 재고량 메트릭 표시
+        res_col1.markdown(f'''<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">현재 재고량</div><div style="font-size: 2.5rem; font-weight: 900; color: {stock_color} !important;">{current_stock:,.1f} kg</div></div>''', unsafe_allow_html=True)
         
         if days_left != 999:
-            res_col2.metric(label="예상 소진일", value=f"{days_left:.1f} 일")
+            res_col2.markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">예상 소진일</div><div style="font-size: 2.5rem; font-weight: 900; color: {metric_val};">{days_left:.1f} 일</div></div>', unsafe_allow_html=True)
             
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             if reorder_days > 0:
@@ -761,7 +787,7 @@ with denitrification_tabs[1]:
             else:
                 st.error("🚨 **긴급: 현재 재고가 안전 재고 기준에 미달합니다. 즉시 입고가 필요합니다.**")
         else:
-            res_col2.metric(label="예상 전량 소진일", value="-")
+            res_col2.markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">예상 전량 소진일</div><div style="font-size: 2.5rem; font-weight: 900; color: {metric_val};">-</div></div>', unsafe_allow_html=True)
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             st.success("✅ 열병합발전시설의 미가동으로 암모니아수가 소모되지 않습니다.")
 
