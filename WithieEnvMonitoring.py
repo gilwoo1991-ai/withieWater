@@ -54,7 +54,7 @@ def get_image_as_base64(path):
 
 
 # 1. 페이지 전체 설정
-st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="expanded")
+st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="auto")
 
 # --- 다크 모드 시인성 최적화 설정 (레이아웃 수치는 절대 고정) ---
 bg_color = "#000000"      # 전체 배경: 검정
@@ -99,12 +99,6 @@ flow_glow = "0 0 8px #00ffff" # 강한 네온 빛 번짐 효과
 # 설정된 flow_color, flow_glow 변수가 CSS에 적용됩니다.
 st.markdown(f"""
 <style>
-    /* 사이드바 접기/펴기 버튼 숨김 (항상 열려있도록 고정) */
-    [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapseButton"] {{
-        display: none !important;
-    }}
-
     .stApp {{ background-color: {bg_color}; }}
 
     /* ========================================================
