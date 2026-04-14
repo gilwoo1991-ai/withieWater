@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import streamlit_antd_components as sac
 import pandas as pd
 import base64
@@ -55,6 +56,29 @@ def get_image_as_base64(path):
 
 # 1. 페이지 전체 설정
 st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="auto")
+
+# --- 모바일 환경에서 PC 화면 레이아웃(배관 등) 깨짐 방지 ---
+# 모바일 브라우저의 viewport를 강제로 PC 화면 너비(1350px)로 고정하여 
+# Streamlit의 모바일용 화면 변형(반응형 모드)이 작동하지 않게 만듭니다.
+components.html(
+    """
+    <script>
+        try {
+            const parentDoc = window.parent.document;
+            let metaViewport = parentDoc.querySelector('meta[name="viewport"]');
+            if (metaViewport) {
+                metaViewport.setAttribute('content', 'width=1350, user-scalable=yes');
+            } else {
+                metaViewport = parentDoc.createElement('meta');
+                metaViewport.name = 'viewport';
+                metaViewport.content = 'width=1350, user-scalable=yes';
+                parentDoc.head.appendChild(metaViewport);
+            }
+        } catch (e) { console.error("Viewport 세팅 실패", e); }
+    </script>
+    """,
+    height=0, width=0
+)
 
 # --- 다크 모드 시인성 최적화 설정 (레이아웃 수치는 절대 고정) ---
 bg_color = "#000000"      # 전체 배경: 검정
