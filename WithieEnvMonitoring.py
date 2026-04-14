@@ -74,38 +74,44 @@ components.html(
                 metaViewport.content = 'width=1350, user-scalable=yes';
                 parentDoc.head.appendChild(metaViewport);
             }
-            
-            // Viewport 속성이 덮어씌워지지 않도록 감시
-            const observer = new MutationObserver(() => {
-                if (metaViewport.getAttribute('content') !== 'width=1350, user-scalable=yes') {
-                    metaViewport.setAttribute('content', 'width=1350, user-scalable=yes');
-                }
-            });
-            observer.observe(parentDoc.head, { childList: true, subtree: true, attributes: true });
 
-            // Streamlit의 모바일 전용 반응형(세로 쌓임) CSS 룰 자체를 강제 삭제하여 PC 비율 완벽 유지
-            function disableMobileStacking() {
-                const sheets = parentDoc.styleSheets;
-                for (let i = 0; i < sheets.length; i++) {
-                    try {
-                        const rules = sheets[i].cssRules;
-                        if (!rules) continue;
-                        for (let j = rules.length - 1; j >= 0; j--) {
-                            const rule = rules[j];
-                            // 화면이 작아지면 width: 100% 로 늘어나는 미디어 쿼리 삭제
-                            if (rule.media && rule.conditionText && rule.conditionText.includes("max-width")) {
-                                if (rule.cssText.includes('min-width: 100%') || rule.cssText.includes('flex: 1 1 100%')) {
-                                    sheets[i].deleteRule(j);
-                                }
-                            }
-                        }
-                    } catch(e) {} // 외부 스타일시트 에러 무시
-                }
+            // 2. 강제 CSS 주입기: Streamlit의 모바일 100% 확장 강제 무력화
+            const styleId = "mobile-column-fix-v2";
+            let styleEl = parentDoc.getElementById(styleId);
+            if (!styleEl) {
+                styleEl = parentDoc.createElement("style");
+                styleEl.id = styleId;
+                parentDoc.head.appendChild(styleEl);
             }
             
-            disableMobileStacking();
-            setTimeout(disableMobileStacking, 1000);
-            setTimeout(disableMobileStacking, 3000);
+            function enforcePCLayout() {
+                let css = "";
+                const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
+                
+                columns.forEach((col, idx) => {
+                    // Streamlit이 PC 모니터용으로 계산해둔 인라인 스타일 원본 비율을 읽어옴
+                    const inlineWidth = col.style.width;
+                    if (inlineWidth && !inlineWidth.includes('100%')) {
+                        const colId = `col-fix-${idx}`;
+                        col.setAttribute("data-col-fix-id", colId);
+                        
+                        // 명시도(Specificity)를 극대화(태그+testid+고유ID)하여 
+                        // 모바일 전용 100% 규칙보다 무조건 우선 적용되도록 !important 주입
+                        css += `div[data-testid="column"][data-col-fix-id="${colId}"] { width: ${inlineWidth} !important; min-width: ${inlineWidth} !important; flex: 1 1 ${inlineWidth} !important; }\n`;
+                    }
+                });
+                
+                // 컬럼 무조건 가로 나열
+                css += `div[data-testid="stHorizontalBlock"] { flex-direction: row !important; flex-wrap: nowrap !important; }\n`;
+                
+                if (styleEl.innerHTML !== css) { styleEl.innerHTML = css; }
+            }
+            
+            enforcePCLayout();
+            
+            // DOM 변화(데이터 로딩) 및 style 속성 변경을 실시간 감지하여 영구 고정
+            const observer = new MutationObserver(enforcePCLayout);
+            observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
     """,
