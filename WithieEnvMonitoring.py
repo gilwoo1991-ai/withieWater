@@ -54,95 +54,106 @@ def get_image_as_base64(path):
 
 
 # 1. 페이지 전체 설정
-st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링")
+st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="expanded")
 
-# session_state에 저장된 인덱스를 바탕으로 테마 이름을 결정합니다.
-# .get()을 사용하여 앱 최초 실행 시에도 오류가 발생하지 않도록 합니다.
-theme_selection = "다크 모드" if st.session_state.get('theme_selector', 0) == 1 else "화이트 모드"
+# --- 다크 모드 시인성 최적화 설정 (레이아웃 수치는 절대 고정) ---
+bg_color = "#000000"      # 전체 배경: 검정
+box_bg = "#e0e0e0"       # 박스 내부: 연회색 (눈 보호용)
+border_color = "#00d4ff" # 테두리: 하늘색
+title_color = "#000000"   # 박스 내부 제목 글자: 검정
+data_color = "#1a1c24"    # 박스 내부 수치 글자
+sub_header_color = "#ffffff" # 배경 위 소제목: 흰색
+metric_val = "#ffffff"    # 하단 메트릭: 흰색
+sidebar_title_color = "#000000" # 다크모드 사이드바 제목: 검정
+dh_label_color = "#000000"
 
-# --- 테마별 시인성 최적화 설정 (레이아웃 수치는 절대 고정) ---
-if theme_selection == "다크 모드":
-    bg_color = "#000000"      # 전체 배경: 검정
-    box_bg = "#e0e0e0"       # 박스 내부: 연회색 (눈 보호용)
-    border_color = "#00d4ff" # 테두리: 하늘색
-    title_color = "#000000"   # 박스 내부 제목 글자: 검정
-    data_color = "#1a1c24"    # 박스 내부 수치 글자
-    sub_header_color = "#ffffff" # 배경 위 소제목: 흰색
-    metric_val = "#ffffff"    # 하단 메트릭: 흰색
-    sidebar_title_color = "#000000" # 다크모드 사이드바 제목: 검정
-    dh_label_color = "#000000"
-    
-    # 다크모드 st.info() 메시지 박스 시인성 개선
-    info_style_override = """
-        [data-testid="stAlert"][data-kind="info"] {
-            background-color: #012A36 !important;
-            border: 1px solid #00d4ff !important;
-            border-radius: 10px !important;
-        }
-        [data-testid="stAlert"][data-kind="info"] * {
-            color: #FFFFFF !important;
-        }
-    """
+# 다크모드 st.info() 메시지 박스 시인성 개선
+info_style_override = """
+    [data-testid="stAlert"][data-kind="info"] {
+        background-color: #012A36 !important;
+        border: 1px solid #00d4ff !important;
+        border-radius: 10px !important;
+    }
+    [data-testid="stAlert"][data-kind="info"] * {
+        color: #FFFFFF !important;
+    }
+"""
 
-    # 다크모드 st.success() 메시지 박스 시인성 개선
-    success_style_override = """
-        [data-testid="stAlert"][data-kind="success"] {
-            background-color: #022C17 !important;
-            border: 1px solid #2ECC71 !important;
-            border-radius: 10px !important;
-        }
-        [data-testid="stAlert"][data-kind="success"] * {
-            color: #FFFFFF !important;
-        }
-    """
+# 다크모드 st.success() 메시지 박스 시인성 개선
+success_style_override = """
+    [data-testid="stAlert"][data-kind="success"] {
+        background-color: #022C17 !important;
+        border: 1px solid #2ECC71 !important;
+        border-radius: 10px !important;
+    }
+    [data-testid="stAlert"][data-kind="success"] * {
+        color: #FFFFFF !important;
+    }
+"""
 
-    # ★ 다크모드 전용: 강렬한 네온 효과 유지 ★
-    flow_color = "#00ffff" # 형광 시안색 입자
-    flow_glow = "0 0 8px #00ffff" # 강한 네온 빛 번짐 효과
-    
-else:
-    bg_color = "#ffffff"      # 전체 배경: 흰색
-    box_bg = "#1a1c24"       # 박스 내부: 검정
-    border_color = "#4e9af1" # 테두리: 파란색
-    title_color = "#fffd8d"   # 박스 내부 제목 글자: 노란색
-    data_color = "#ffffff"    # 박스 내부 수치 글자: 흰색
-    sub_header_color = "#000000" # 배경 위 소제목: 검정
-    metric_val = "#000000"    # 하단 메트릭: 검정
-    sidebar_title_color = "#000000" # 화이트모드에서도 검정 유지
-    dh_label_color = "#ffffff"
-    info_style_override = "" # 화이트모드에서는 오버라이드 없음
-    success_style_override = "" # 화이트모드에서는 오버라이드 없음
-    
-    # ★ 화이트모드 전용: 눈이 편안한 소프트 효과 적용 ★
-    flow_color = "#4e9af1" # 부드러운 파란색 입자 (테두리색과 통일)
-    flow_glow = "none"    # 네온 빛 번짐 효과 완전 제거
+# ★ 다크모드 전용: 강렬한 네온 효과 유지 ★
+flow_color = "#00ffff" # 형광 시안색 입자
+flow_glow = "0 0 8px #00ffff" # 강한 네온 빛 번짐 효과
 
 # --- CSS 스타일 정의 (수치 및 구조 절대 고정) ---
 # 설정된 flow_color, flow_glow 변수가 CSS에 적용됩니다.
 st.markdown(f"""
 <style>
+    /* 사이드바 접기/펴기 버튼 숨김 (항상 열려있도록 고정) */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapseButton"] {{
+        display: none !important;
+    }}
+
     .stApp {{ background-color: {bg_color}; }}
-    .main {{ 
-        background-color: {bg_color}; 
-        overflow-x: auto !important; /* 화면이 작아지면 가로 스크롤 생성 */
+
+    /* ========================================================
+       스크롤바 디자인 커스텀 (다크모드 시인성 확보를 위해 흰색으로 변경)
+       ======================================================== */
+    ::-webkit-scrollbar {{
+        width: 12px;
+        height: 12px;
+    }}
+    ::-webkit-scrollbar-track {{
+        background: {bg_color};
+    }}
+    ::-webkit-scrollbar-thumb {{
+        background: #ffffff; /* 스크롤바 색상을 흰색으로 지정 */
+        border-radius: 6px;
+        border: 2px solid {bg_color}; /* 배경과 어우러지도록 테두리 추가 */
+    }}
+    * {{
+        scrollbar-color: #ffffff {bg_color}; /* Firefox 브라우저 지원용 */
+    }}
+
+    /* ========================================================
+       창 모드(작은 화면)에서 메인 화면 하단에 가로 스크롤바가 생기도록 강제
+       사이드바는 고정되고 메인 화면 영역만 스크롤 가능하도록 설정
+       ======================================================== */
+    .main, [data-testid="stMain"] {{ 
+        background-color: {bg_color};
+        overflow-x: auto !important; /* 창이 좁아지면 메인 화면 하단에 스크롤바 생성 */
+        overflow-y: auto !important;
     }}
     
     /* ========================================================
-       모바일/작은 화면에서도 데스크탑 레이아웃 강제 고정
+       창 크기를 줄여도 레이아웃이 깨지지 않고 스크롤이 생기도록 강제 고정
+       메인 콘텐츠의 너비를 강제 고정하여 좁은 창에서 스크롤을 유도
        ======================================================== */
-    .block-container, [data-testid="stAppViewBlockContainer"] {{
-        min-width: 1350px !important; /* 레이아웃이 깨지지 않을 최소 데스크탑 너비 강제 */
+    .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
+        min-width: 1350px !important; /* 콘텐츠의 최소 너비를 강제 */
+        max-width: 1350px !important; /* 아주 큰 화면에서 레이아웃이 과도하게 늘어나는 것을 방지 */
+        padding-left: 0.5rem !important;  /* Streamlit 기본 좌우 여백을 줄여서 잘림 현상 방지 */
+        padding-right: 0.5rem !important;
+        margin-left: 0 !important; /* 창이 좁아질 때 가운데 정렬로 인해 왼쪽 화면이 잘리는 현상 방지 */
+        margin-right: auto !important;
     }}
     [data-testid="stHorizontalBlock"] {{
         flex-wrap: nowrap !important; /* 컬럼 줄바꿈(세로로 쌓이는 현상) 강제 차단 */
     }}
-    /* 모바일 기기에서 Streamlit이 컬럼 폭을 100%로 덮어씌우는 것 방지 */
-    @media (max-width: 1024px) {{
-        [data-testid="column"] {{
-            width: revert !important;
-            flex: revert !important;
-            min-width: revert !important;
-        }}
+    /* 화면을 줄일 때 컬럼 너비가 0px로 사라지는 현상을 방지하고 비율을 유지 */
+    [data-testid="column"] {{
+        min-width: 0 !important;
     }}
     
     h1, h2, h3 {{ color: {sub_header_color} !important; }}
@@ -325,7 +336,6 @@ st.markdown(f"""
     }}
     
     /* 메트릭 시인성 극대화 */
-    [data-testid="stMetricLabel"] * {{ font-size: 1.3rem !important; font-weight: 900 !important; color: {sub_header_color} !important; }}
     [data-testid="stMetricValue"] {{ font-size: 2.5rem !important; font-weight: 900 !important; }}
 
     .alarm-label {{
@@ -335,6 +345,18 @@ st.markdown(f"""
     }}
     {info_style_override}
     {success_style_override}
+
+    /* 탈질계통 메트릭 전용 커스텀 흰색 클래스 */
+    .custom-white-metric .title {{
+        font-size: 1.3rem !important;
+        font-weight: 900 !important;
+        color: #ffffff !important;
+    }}
+    .custom-white-metric .value {{
+        font-size: 2.5rem !important;
+        font-weight: 900 !important;
+        color: #ffffff !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -757,24 +779,13 @@ with denitrification_tabs[0]:
             # 파싱 실패 시 기본값 사용
             nox_val_num = 15.0
 
-        # NOx 값에 따라 색상 결정
-        if nox_val_num >= 30:
-            nox_color = "#ff4b4b"  # 빨간색
-        elif nox_val_num >= 20:
-            nox_color = "#ffc107"  # 노란색
-        else:
-            nox_color = metric_val # 기본 메트릭 색상
-
-        m_cols[0].markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">ST LOAD</div><div style="font-size: 2.5rem; font-weight: 900; color: {metric_val};">{st_load_val} MW</div></div>', unsafe_allow_html=True)
+        m_cols[0].markdown(f'<div class="custom-white-metric"><div class="title">ST LOAD</div><div class="value">{st_load_val} MW</div></div>', unsafe_allow_html=True)
         # 사용자 정의 HTML로 NOx 메트릭 표시
-        m_cols[1].markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">NOx</div><div style="font-size: 2.5rem; font-weight: 900; color: {nox_color} !important;">{nox_val_str} ppm</div></div>', unsafe_allow_html=True)
+        m_cols[1].markdown(f'<div class="custom-white-metric"><div class="title">NOx</div><div class="value">{nox_val_str} ppm</div></div>', unsafe_allow_html=True)
         st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
         
-        # 재고량에 따른 색상 결정
-        stock_color = "#ff4b4b" if current_stock < 6500 else metric_val
-
         # 사용자 정의 HTML로 재고량 메트릭 표시
-        st.markdown(f'''<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">현재 재고량</div><div style="font-size: 2.5rem; font-weight: 900; color: {stock_color} !important;">{current_stock:,.1f} kg</div></div>''', unsafe_allow_html=True)
+        st.markdown(f'''<div class="custom-white-metric"><div class="title">현재 재고량</div><div class="value">{current_stock:,.1f} kg</div></div>''', unsafe_allow_html=True)
 
 with denitrification_tabs[1]:
     st.markdown("<div class='sub-header-final'>4-2) ST LOAD 기반 입고 시기 예측</div>", unsafe_allow_html=True)
@@ -813,14 +824,11 @@ with denitrification_tabs[1]:
             
         res_col1, res_col2 = st.columns(2)
 
-        # 재고량에 따른 색상 결정 (동일한 로직 재사용)
-        stock_color = "#ff4b4b" if current_stock < 6500 else metric_val
-        
         # 사용자 정의 HTML로 재고량 메트릭 표시
-        res_col1.markdown(f'''<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">현재 재고량</div><div style="font-size: 2.5rem; font-weight: 900; color: {stock_color} !important;">{current_stock:,.1f} kg</div></div>''', unsafe_allow_html=True)
+        res_col1.markdown(f'<div class="custom-white-metric"><div class="title">현재 재고량</div><div class="value">{current_stock:,.1f} kg</div></div>', unsafe_allow_html=True)
         
         if days_left != 999:
-            res_col2.markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">예상 소진일</div><div style="font-size: 2.5rem; font-weight: 900; color: {metric_val};">{days_left:.1f} 일</div></div>', unsafe_allow_html=True)
+            res_col2.markdown(f'<div class="custom-white-metric"><div class="title">예상 소진일</div><div class="value">{days_left:.1f} 일</div></div>', unsafe_allow_html=True)
             
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             if reorder_days > 0:
@@ -828,14 +836,14 @@ with denitrification_tabs[1]:
             else:
                 st.error("🚨 **긴급: 현재 재고가 안전 재고 기준에 미달합니다. 즉시 입고가 필요합니다.**")
         else:
-            res_col2.markdown(f'<div data-testid="stMetric"><div data-testid="stMetricLabel" style="font-size: 1.3rem; font-weight: 900; color: {sub_header_color} !important;">예상 전량 소진일</div><div style="font-size: 2.5rem; font-weight: 900; color: {metric_val};">-</div></div>', unsafe_allow_html=True)
+            res_col2.markdown(f'<div class="custom-white-metric"><div class="title">예상 전량 소진일</div><div class="value">-</div></div>', unsafe_allow_html=True)
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             st.success("✅ 열병합발전시설의 미가동으로 암모니아수가 소모되지 않습니다.")
 
 
 # --- 사이드바 ---
 with st.sidebar:
-    st.markdown(f"<div style='font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; color: {sidebar_title_color} !important;'>📊 Summary</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; color: {sidebar_title_color} !important;'>📊 모니터링 현황</div>", unsafe_allow_html=True)
     
     # --- 순수제조계통 ---
     st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>순수제조계통</p>", unsafe_allow_html=True)
@@ -843,21 +851,21 @@ with st.sidebar:
     # Determine individual statuses
     ix_status_string = ""
     if train_a_running and train_b_running:
-        ix_status_string = "이온교환수지: 'A' & 'B' Train 가동"
+        ix_status_string = "🟢 이온교환수지: 'A' & 'B' Train 가동"
     elif train_a_running:
-        ix_status_string = "이온교환수지: 'A' Train 가동"
+        ix_status_string = "🟢 이온교환수지: 'A' Train 가동"
     elif train_b_running:
-        ix_status_string = "이온교환수지: 'B' Train 가동"
+        ix_status_string = "🟢 이온교환수지: 'B' Train 가동"
     else:
-        ix_status_string = "이온교환수지: 정지중"
+        ix_status_string = "🔴 이온교환수지: 정지중"
 
-    ro_status_string = "R.O System: 가동중" if ro_running else "R.O System: 정지중"
+    ro_status_string = "🟢 R.O System: 가동중" if ro_running else "🔴 R.O System: 정지중"
 
     # Determine overall status for color
     is_pure_system_running = train_a_running or train_b_running or ro_running
     
     # Combine strings
-    combined_status = f"- {ix_status_string}\n- {ro_status_string}"
+    combined_status = f"{ix_status_string}  \n{ro_status_string}"
 
     # Display in a single box
     if is_pure_system_running:
@@ -870,18 +878,18 @@ with st.sidebar:
     
     dh_status_strings = []
     if polisher_running:
-        dh_status_strings.append("Polisher: 가동중")
+        dh_status_strings.append("🟢 Polisher: 가동중")
     else:
-        dh_status_strings.append("Polisher: 정지중")
+        dh_status_strings.append("🔴 Polisher: 정지중")
     
     if afm_running:
-        dh_status_strings.append("AFM: 가동중")
+        dh_status_strings.append("🟢 AFM: 가동중")
     else:
-        dh_status_strings.append("AFM: 정지중")
+        dh_status_strings.append("🔴 AFM: 정지중")
 
     is_dh_system_running = polisher_running or afm_running
     
-    combined_dh_status = "\n".join([f"- {s}" for s in dh_status_strings])
+    combined_dh_status = "  \n".join(dh_status_strings)
 
     if is_dh_system_running:
         st.success(combined_dh_status)
@@ -891,24 +899,23 @@ with st.sidebar:
     # --- 폐수처리계통 ---
     st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>폐수처리계통</p>", unsafe_allow_html=True)
     if is_ww_running:
-        st.success("- 가동중")
+        st.success("🟢 가동중")
     else:
-        st.warning("- 정지중")
+        st.warning("🔴 정지중")
+
+    # --- 탈질계통 ---
+    st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>탈질계통</p>", unsafe_allow_html=True)
+    
+    st_load_side = get_value('ST_LOAD', '24')
+    nox_side = get_value('NOx', '15')
+    nh4oh_side = get_value('NH4OH_Consumption', '0')
+
+    den_icon = "🟢" if is_den_running else "🔴"
+    den_details = f"{den_icon} ST Load: {st_load_side} MW  \n{den_icon} NOx: {nox_side} ppm  \n{den_icon} 암모니아수 투입량: {nh4oh_side} kg/h"
+
+    if is_den_running:
+        st.success(den_details)
+    else:
+        st.warning(den_details)
 
     st.markdown("<div style='flex: 1;'></div>", unsafe_allow_html=True)
-    
-    # 테마 선택
-    if 'theme_selector' not in st.session_state:
-        st.session_state.theme_selector = 0
-
-    sac.segmented(
-        items=[
-            sac.SegmentedItem(icon='sun'),
-            sac.SegmentedItem(icon='moon'),
-        ],
-        align='center',
-        size='sm',
-        radius='lg',
-        return_index=True,
-        key='theme_selector'
-    )
