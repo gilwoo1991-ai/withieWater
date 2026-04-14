@@ -74,6 +74,35 @@ components.html(
                 metaViewport.content = 'width=1350, user-scalable=yes';
                 parentDoc.head.appendChild(metaViewport);
             }
+
+            // Streamlit의 모바일 자동 100% 확장 차단 및 PC 비율 고정
+            const styleId = "mobile-column-fix";
+            let styleEl = parentDoc.getElementById(styleId);
+            if (!styleEl) {
+                styleEl = parentDoc.createElement("style");
+                styleEl.id = styleId;
+                parentDoc.head.appendChild(styleEl);
+            }
+            
+            function fixLayout() {
+                let css = "";
+                const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
+                columns.forEach((col, idx) => {
+                    col.setAttribute("data-col-idx", idx);
+                    // Streamlit이 설정한 원래 PC 화면 비율(width)을 읽어옴
+                    const w = col.style.width;
+                    if (w && !w.includes('100%')) {
+                        // 모바일에서 강제로 100%가 되는 것을 막고 기존 비율을 !important로 덮어씌움
+                        css += `div[data-col-idx="${idx}"] { width: ${w} !important; flex: 1 1 ${w} !important; min-width: 0 !important; }\n`;
+                    }
+                });
+                if (styleEl.innerHTML !== css) { styleEl.innerHTML = css; }
+            }
+            
+            fixLayout();
+            // 탭 이동이나 데이터 갱신 시에도 비율이 유지되도록 모니터링
+            const observer = new MutationObserver(fixLayout);
+            observer.observe(parentDoc.body, { childList: true, subtree: true });
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
     """,
@@ -161,12 +190,14 @@ st.markdown(f"""
     .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
         min-width: 1350px !important; /* 콘텐츠의 최소 너비를 강제 */
         max-width: 1350px !important; /* 아주 큰 화면에서 레이아웃이 과도하게 늘어나는 것을 방지 */
+        width: 1350px !important; /* 모바일 기기에서도 화면 너비 완벽 고정 */
         padding-left: 0.5rem !important;  /* Streamlit 기본 좌우 여백을 줄여서 잘림 현상 방지 */
         padding-right: 0.5rem !important;
         margin-left: 0 !important; /* 창이 좁아질 때 가운데 정렬로 인해 왼쪽 화면이 잘리는 현상 방지 */
         margin-right: auto !important;
     }}
     [data-testid="stHorizontalBlock"] {{
+        flex-direction: row !important; /* 모바일에서 세로로 쌓이는 현상 원천 차단 */
         flex-wrap: nowrap !important; /* 컬럼 줄바꿈(세로로 쌓이는 현상) 강제 차단 */
     }}
     /* 화면을 줄일 때 컬럼 너비가 0px로 사라지는 현상을 방지하고 비율을 유지 */
