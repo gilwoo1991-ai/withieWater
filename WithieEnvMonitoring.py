@@ -64,54 +64,30 @@ components.html(
     """
     <script>
         try {
-            const parentDoc = window.parent.document;
+            const parentWin = window.parent;
+            const parentDoc = parentWin.document;
+
+            // 1. 모바일 뷰포트를 강제로 1350px 캔버스로 고정 (접속 시 전체 화면이 쏙 들어가게 축소 유도)
             let metaViewport = parentDoc.querySelector('meta[name="viewport"]');
             if (metaViewport) {
-                metaViewport.setAttribute('content', 'width=1350, user-scalable=yes');
+                metaViewport.setAttribute('content', 'width=1350, initial-scale=0.25, maximum-scale=3.0, user-scalable=yes');
             } else {
                 metaViewport = parentDoc.createElement('meta');
                 metaViewport.name = 'viewport';
-                metaViewport.content = 'width=1350, user-scalable=yes';
+                metaViewport.content = 'width=1350, initial-scale=0.25, maximum-scale=3.0, user-scalable=yes';
                 parentDoc.head.appendChild(metaViewport);
             }
 
-            // 2. 강제 CSS 주입기: Streamlit의 모바일 100% 확장 강제 무력화
-            const styleId = "mobile-column-fix-v2";
-            let styleEl = parentDoc.getElementById(styleId);
-            if (!styleEl) {
-                styleEl = parentDoc.createElement("style");
-                styleEl.id = styleId;
-                parentDoc.head.appendChild(styleEl);
-            }
+            // 2. Streamlit React 엔진 속이기: 스마트폰 세로 모드에서도 브라우저 너비를 무조건 1350px로 인식하게 조작
+            Object.defineProperty(parentWin, 'innerWidth', { get: () => 1350, configurable: true });
+            Object.defineProperty(parentWin, 'outerWidth', { get: () => 1350, configurable: true });
+            Object.defineProperty(parentDoc.documentElement, 'clientWidth', { get: () => 1350, configurable: true });
             
-            function enforcePCLayout() {
-                let css = "";
-                const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
-                
-                columns.forEach((col, idx) => {
-                    // Streamlit이 PC 모니터용으로 계산해둔 인라인 스타일 원본 비율을 읽어옴
-                    const inlineWidth = col.style.width;
-                    if (inlineWidth && !inlineWidth.includes('100%')) {
-                        const colId = `col-fix-${idx}`;
-                        col.setAttribute("data-col-fix-id", colId);
-                        
-                        // 명시도(Specificity)를 극대화(태그+testid+고유ID)하여 
-                        // 모바일 전용 100% 규칙보다 무조건 우선 적용되도록 !important 주입
-                        css += `div[data-testid="column"][data-col-fix-id="${colId}"] { width: ${inlineWidth} !important; min-width: ${inlineWidth} !important; flex: 1 1 ${inlineWidth} !important; }\n`;
-                    }
-                });
-                
-                // 컬럼 무조건 가로 나열
-                css += `div[data-testid="stHorizontalBlock"] { flex-direction: row !important; flex-wrap: nowrap !important; }\n`;
-                
-                if (styleEl.innerHTML !== css) { styleEl.innerHTML = css; }
-            }
-            
-            enforcePCLayout();
-            
-            // DOM 변화(데이터 로딩) 및 style 속성 변경을 실시간 감지하여 영구 고정
-            const observer = new MutationObserver(enforcePCLayout);
-            observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+            // 3. 리사이즈 이벤트 강제 발생: 속인 해상도(1350px)를 바탕으로 100%로 풀려버린 컬럼들을 PC 비율로 즉각 재계산
+            const triggerResize = () => parentWin.dispatchEvent(new Event('resize'));
+            triggerResize();
+            setTimeout(triggerResize, 200);
+            setTimeout(triggerResize, 800);
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
     """,
@@ -204,6 +180,15 @@ st.markdown(f"""
         padding-right: 0.5rem !important;
         margin-left: 0 !important; /* 창이 좁아질 때 가운데 정렬로 인해 왼쪽 화면이 잘리는 현상 방지 */
         margin-right: auto !important;
+    }}
+    
+    /* 무조건 가로 나열 (세로 모드에서도 세로로 쌓이지 않도록 안전장치 강제) */
+    [data-testid="stHorizontalBlock"] {{
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+    }}
+    [data-testid="column"] {{
+        min-width: 0 !important;
     }}
     
     h1, h2, h3 {{ color: {sub_header_color} !important; }}
