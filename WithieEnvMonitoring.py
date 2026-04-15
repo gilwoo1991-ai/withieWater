@@ -78,52 +78,6 @@ components.html(
             // Streamlit의 모바일 레이아웃 변형(컬럼 비율 파괴 등)을 원천 차단합니다.
             metaViewport.setAttribute('content', 'width=1350, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
 
-            // --- NEW: 강제 가로 모드 유도 화면 추가 ---
-            if (!parentDoc.getElementById('rotate-device-overlay')) {
-                const overlay = parentDoc.createElement('div');
-                overlay.id = 'rotate-device-overlay';
-                
-                Object.assign(overlay.style, {
-                    position: 'fixed', top: '0', left: '0',
-                    width: '100vw', height: '100vh',
-                    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-                    backgroundColor: '#000000', // 투명도 없는 완전한 검은색으로 뒤쪽 화면을 완벽히 가림
-                    color: '#ffffff',
-                    display: 'none', // Initially hidden
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: '99999999',
-                    textAlign: 'center',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-                });
-
-                overlay.innerHTML = `
-                    <div style="transform: rotate(90deg); font-size: 50px; margin-bottom: 20px;">📱</div>
-                    <h2 style="color: #ffffff; margin-bottom: 10px;">가로 모드로 전환해주세요</h2>
-                    <p style="color: #cccccc; max-width: 80%;">최적의 모니터링 환경을 위해<br>기기를 가로로 돌려주세요.</p>
-                `;
-                
-                parentDoc.body.appendChild(overlay);
-
-                function checkOrientation() {
-                    const isPortrait = window.parent.innerHeight > window.parent.innerWidth;
-                    const isMobile = window.parent.matchMedia('(pointer: coarse)').matches;
-                    overlay.style.display = (isPortrait && isMobile) ? 'flex' : 'none';
-                    const appContainer = parentDoc.querySelector('.stApp');
-                    if (isPortrait && isMobile) {
-                        overlay.style.display = 'flex';
-                        if (appContainer) appContainer.style.setProperty('visibility', 'hidden', 'important'); // 세로 모드일 때 화면 완전 숨김
-                    } else {
-                        overlay.style.display = 'none';
-                        if (appContainer) appContainer.style.setProperty('visibility', 'visible', 'important'); // 가로 모드일 때만 화면 노출
-                    }
-                }
-
-                window.parent.addEventListener('resize', checkOrientation);
-                checkOrientation(); // Initial check
-            }
-
             // --- 2. 아이폰(iOS) 전체화면 지원(웹앱 모드) 메타태그 추가 ---
             // 이 태그가 있으면 아이폰에서 '홈 화면에 추가' 시 주소창이 없는 100% 전체화면 앱으로 구동됩니다.
             if (!parentDoc.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
@@ -343,11 +297,13 @@ st.markdown(f"""
         flex-wrap: nowrap !important;
     }}
     /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지 */
-    div[data-testid="column"] {{
-        width: unset !important;
+    div[data-testid="column"] {{ /* Streamlit의 컬럼 요소 */
+        width: unset !important; /* Streamlit이 강제로 적용하는 width: 100%를 무력화 */
+        flex: 1 1 0% !important; /* flex-grow, flex-shrink, flex-basis를 명시하여 비율 유지 */
+        min-width: 0 !important; /* 컬럼이 최소 너비 이하로 줄어들지 않도록 방지 */
     }}
 
-    /* 모바일에서 헤더 숨기기 및 상단 여백 조정 */
+    /* 모바일에서 헤더 숨기기 및 상단 여백 조정 (화면 공간 확보) */
     @media (max-width: 768px) {{
         header[data-testid="stHeader"] {{
             display: none !important;
