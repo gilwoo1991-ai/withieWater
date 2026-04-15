@@ -175,14 +175,8 @@ st.markdown(f"""
         width: 1350px !important; 
         padding-left: 0.5rem !important;  /* Streamlit 기본 좌우 여백을 줄여서 잘림 현상 방지 */
         padding-right: 0.5rem !important;
-        margin: 0 auto !important; /* 항상 가운데 정렬 */
-    }}
-    
-    /* 화면 너비가 1350px 보다 작아지면 1350px짜리 캔버스를 비율에 맞춰 한눈에 쏙 들어가게 축소 (반응형 느낌) */
-    @media screen and (max-width: 1350px) {{
-        .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
-            zoom: calc(100vw / 1360) !important;
-        }}
+        margin-left: 0 !important; /* 스크롤 시 왼쪽 화면이 잘리는 현상을 방지하기 위해 무조건 왼쪽 정렬 */
+        margin-right: auto !important;
     }}
     
     /* 무조건 가로 나열 (세로 모드에서도 세로로 쌓이지 않도록 안전장치 강제) */
