@@ -78,6 +78,43 @@ components.html(
             // Streamlit의 모바일 레이아웃 변형(컬럼 비율 파괴 등)을 원천 차단합니다.
             metaViewport.setAttribute('content', 'width=1350, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
 
+            // --- NEW: 강제 가로 모드 유도 화면 추가 ---
+            if (!parentDoc.getElementById('rotate-device-overlay')) {
+                const overlay = parentDoc.createElement('div');
+                overlay.id = 'rotate-device-overlay';
+                
+                Object.assign(overlay.style, {
+                    position: 'fixed', top: '0', left: '0',
+                    width: '100vw', height: '100vh',
+                    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                    color: '#ffffff',
+                    display: 'none', // Initially hidden
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: '99999999',
+                    textAlign: 'center',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+                });
+
+                overlay.innerHTML = `
+                    <div style="transform: rotate(90deg); font-size: 50px; margin-bottom: 20px;">📱</div>
+                    <h2 style="color: #ffffff; margin-bottom: 10px;">가로 모드로 전환해주세요</h2>
+                    <p style="color: #cccccc; max-width: 80%;">최적의 모니터링 환경을 위해<br>기기를 가로로 돌려주세요.</p>
+                `;
+                
+                parentDoc.body.appendChild(overlay);
+
+                function checkOrientation() {
+                    const isPortrait = window.parent.innerHeight > window.parent.innerWidth;
+                    const isMobile = window.parent.matchMedia('(pointer: coarse)').matches;
+                    overlay.style.display = (isPortrait && isMobile) ? 'flex' : 'none';
+                }
+
+                window.parent.addEventListener('resize', checkOrientation);
+                checkOrientation(); // Initial check
+            }
+
             // --- 2. 아이폰(iOS) 전체화면 지원(웹앱 모드) 메타태그 추가 ---
             // 이 태그가 있으면 아이폰에서 '홈 화면에 추가' 시 주소창이 없는 100% 전체화면 앱으로 구동됩니다.
             if (!parentDoc.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
@@ -92,7 +129,7 @@ components.html(
                 parentDoc.head.appendChild(metaStatus);
             }
 
-            // --- 3. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
+            // --- 4. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
             if (!parentDoc.getElementById('mobile-fs-btn')) {
                 const fsBtn = parentDoc.createElement('div');
                 fsBtn.id = 'mobile-fs-btn';
@@ -298,10 +335,15 @@ st.markdown(f"""
     }}
     /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지 */
     div[data-testid="column"] {{
+        width: unset !important;
+    }}
+
+    /* 모바일에서 헤더 숨기기 및 상단 여백 조정 */
+    @media (max-width: 768px) {{
         header[data-testid="stHeader"] {{
             display: none !important;
         }}
-        .block-container {{
+        .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
             padding-top: 1rem !important;
         }}
     }}
