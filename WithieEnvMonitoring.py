@@ -1056,7 +1056,7 @@ with st.sidebar:
     is_pure_system_running = train_a_running or train_b_running or ro_running
     
     # Combine strings
-    combined_status = f"{ix_status_string}  \n{ro_status_string}"
+    combined_status = f"{ix_status_string}\n\n{ro_status_string}"
 
     # Display in a single box
     if is_pure_system_running:
@@ -1080,7 +1080,7 @@ with st.sidebar:
 
     is_dh_system_running = polisher_running or afm_running
     
-    combined_dh_status = "  \n".join(dh_status_strings)
+    combined_dh_status = "\n\n".join(dh_status_strings)
 
     if is_dh_system_running:
         st.success(combined_dh_status)
@@ -1102,7 +1102,7 @@ with st.sidebar:
     nh4oh_side = get_value('NH4OH_Consumption', '125')
 
     den_icon = "🟢" if is_den_running else "🔴"
-    den_details = f"{den_icon} ST Load: {st_load_side} MW  \n{den_icon} NOx: {nox_side} ppm  \n{den_icon} 암모니아수 투입량: {nh4oh_side} kg/h"
+    den_details = f"{den_icon} ST Load: {st_load_side} MW\n\n{den_icon} NOx: {nox_side} ppm\n\n{den_icon} 암모니아수 투입량: {nh4oh_side} kg/h"
 
     if is_den_running:
         st.success(den_details)
