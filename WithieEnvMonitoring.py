@@ -262,6 +262,9 @@ alert_text_align_override = """
         text-align: left !important;
         width: 100% !important;
         margin-bottom: 0 !important;
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        white-space: normal !important; /* HTML 구조상 발생하는 유령 공백(들여쓰기) 원천 차단 */
     }
 """
 
