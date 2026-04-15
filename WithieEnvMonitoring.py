@@ -291,16 +291,21 @@ st.markdown(f"""
     }}
     
     /* [레이아웃 깨짐 방지 최종 솔루션] 기기 화면 크기와 관계없이 무조건 PC버전 가로 배열 강제 유지 */
+    /* Streamlit의 반응형 동작을 유발하는 모든 요소를 가장 강력하게 덮어씁니다. */
+    
     /* 1. 컬럼 컨테이너(가로 블록)가 세로로 쌓이는 것을 원천 차단 */
-    div[data-testid="stHorizontalBlock"] {{
+    body div[data-testid="stHorizontalBlock"] {{
         flex-direction: row !important;
         flex-wrap: nowrap !important;
+        box-sizing: border-box !important; /* 일관된 박스 모델 적용 */
+        min-width: 100% !important; /* 컨테이너가 최소한 100% 너비를 유지하도록 강제 */
     }}
     /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지 */
-    div[data-testid="column"] {{ /* Streamlit의 컬럼 요소 */
-        width: unset !important; /* Streamlit이 강제로 적용하는 width: 100%를 무력화 */
-        flex: 1 1 0% !important; /* flex-grow, flex-shrink, flex-basis를 명시하여 비율 유지 */
-        min-width: 0 !important; /* 컬럼이 최소 너비 이하로 줄어들지 않도록 방지 */
+    body div[data-testid="column"] {{ /* Streamlit의 컬럼 요소 */
+        width: auto !important; /* Streamlit이 강제로 적용하는 width: 100%를 무력화하고 콘텐츠에 맞게 자동 조절 */
+        flex: 1 0 auto !important; /* flex-grow:1, flex-shrink:0, flex-basis:auto - 콘텐츠 크기를 존중하며 공간 채움 */
+        min-width: fit-content !important; /* 컬럼이 콘텐츠보다 작아지지 않도록 최소 너비 보장 */
+        box-sizing: border-box !important; /* 일관된 박스 모델 적용 */
     }}
 
     /* 모바일에서 헤더 숨기기 및 상단 여백 조정 (화면 공간 확보) */
