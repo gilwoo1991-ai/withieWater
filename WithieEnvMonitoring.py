@@ -189,7 +189,12 @@ st.markdown(f"""
     .main, [data-testid="stMain"] {{ 
         background-color: {bg_color};
         overflow-x: auto !important; /* 창이 좁아지면 메인 화면 하단에 스크롤바 생성 */
+    /* 모바일 기기에서도 최상위 컨테이너가 스크롤을 막지 못하도록 전체 강제 오버라이딩 */
+    html, body, [data-testid="stApp"], [data-testid="stAppViewContainer"], .main, [data-testid="stMain"] {{ 
+        background-color: {bg_color} !important;
+        overflow-x: auto !important; 
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important; /* iOS 모바일 스크롤 부드럽게 */
     }}
     
     /* ========================================================
@@ -219,6 +224,11 @@ st.markdown(f"""
         [data-testid="stHorizontalBlock"] {{
             flex-direction: row !important;
             flex-wrap: nowrap !important;
+        }}
+        /* Streamlit이 모바일에서 강제로 컬럼에 width: 100%를 주는 것을 무력화하고 균등 분배 */
+        [data-testid="column"] {{
+            width: auto !important;
+            flex: 1 1 0% !important;
         }}
     }}
     
