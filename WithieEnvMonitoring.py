@@ -57,42 +57,6 @@ def get_image_as_base64(path):
 # 1. 페이지 전체 설정
 st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="expanded")
 
-# --- 모바일 가로 모드 강제(유도) 오버레이 ---
-st.markdown("""
-<div id="portrait-blocker" class="portrait-overlay">
-    <div style="font-size: 4rem; margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out;">📱</div>
-    <div>스마트폰을 가로로 회전해주세요</div>
-    <div style="font-size: 1rem; color: #888; margin-top: 15px;">원활한 공정 모니터링을 위해 가로 모드가 필요합니다.</div>
-</div>
-<style>
-    .portrait-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        background-color: #000000;
-        z-index: 9999999;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #00d4ff;
-        font-size: 1.5rem;
-        font-weight: bold;
-        text-align: center;
-    }
-    @keyframes rotatePhone {
-        0% { transform: rotate(0deg); }
-        50% { transform: rotate(-90deg); }
-        100% { transform: rotate(0deg); }
-    }
-    /* 모바일 기기(너비 768px 이하)에서 세로 모드일 때만 표시 */
-    @media screen and (max-width: 768px) and (orientation: portrait) {
-        .portrait-overlay {
-            display: flex !important;
-        }
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # --- 모바일 환경에서 PC 화면 레이아웃(배관 등) 깨짐 방지 ---
 # 모바일 브라우저의 viewport를 강제로 PC 화면 너비(1350px)로 고정하여 
@@ -111,7 +75,7 @@ components.html(
                 metaViewport.name = 'viewport';
                 parentDoc.head.appendChild(metaViewport);
             }
-            metaViewport.setAttribute('content', 'width=1350');
+            metaViewport.setAttribute('content', 'width=650, initial-scale=1.0, minimum-scale=0.3, maximum-scale=5.0, user-scalable=yes');
 
             // Streamlit의 컬럼이 모바일에서 강제로 100%가 되며 세로로 쌓이는 현상을 방지
             function lockColumnWidths() {
@@ -339,9 +303,9 @@ st.markdown(f"""
        PC 레이아웃 고정 및 모바일 기기 자동 축소(반응형 줌) 적용
        ======================================================== */
     .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
-        min-width: 1350px !important; /* 콘텐츠의 최소 너비를 강제 */
+        min-width: 650px !important; /* 650px 이하에서도 PC 레이아웃을 유지 (브라우저가 자동 축소) */
         max-width: 100% !important; /* 확장형(Wide) 페이지에 맞게 모니터 해상도 전체 너비를 사용하도록 100% 허용 */
-        width: 100% !important; 
+        width: 100% !important;
         padding-left: 0.5rem !important;  /* Streamlit 기본 좌우 여백을 줄여서 잘림 현상 방지 */
         padding-right: 0.5rem !important;
         margin-left: 0 !important; /* 스크롤 시 왼쪽 화면이 잘리는 현상을 방지하기 위해 무조건 왼쪽 정렬 */
@@ -357,16 +321,16 @@ st.markdown(f"""
         min-width: 0 !important;
     }}
     
-    /* 642px 미만 모바일 화면에서 Streamlit의 강제 세로화 오버라이딩 추가 */
+    /* 모든 모바일 화면 크기에서 Streamlit의 강제 세로화(컬럼 스택) 원천 차단 */
     @media (max-width: 768px) {{
         [data-testid="stHorizontalBlock"] {{
             flex-direction: row !important;
             flex-wrap: nowrap !important;
         }}
-        /* Streamlit이 모바일에서 강제로 컬럼에 width: 100%를 주는 것을 무력화하고 균등 분배 */
         [data-testid="column"] {{
             width: auto !important;
             flex: 1 1 0% !important;
+            min-width: 0 !important;
         }}
     }}
     
