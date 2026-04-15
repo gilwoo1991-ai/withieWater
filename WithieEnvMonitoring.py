@@ -76,7 +76,8 @@ components.html(
             }
             // 모바일 기기의 너비(device-width) 대신 데스크탑 너비(1350px)를 모바일에 강제 인식시켜 
             // Streamlit의 모바일 레이아웃 변형(컬럼 비율 파괴 등)을 원천 차단합니다.
-            metaViewport.setAttribute('content', 'width=1350, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+            // initial-scale=1.0을 제거하여 모바일 브라우저가 화면을 강제로 1350px로 렌더링하고 축소하도록 만듭니다.
+            metaViewport.setAttribute('content', 'width=1350, user-scalable=yes');
 
             // --- 2. 아이폰(iOS) 전체화면 지원(웹앱 모드) 메타태그 추가 ---
             // 이 태그가 있으면 아이폰에서 '홈 화면에 추가' 시 주소창이 없는 100% 전체화면 앱으로 구동됩니다.
@@ -92,7 +93,28 @@ components.html(
                 parentDoc.head.appendChild(metaStatus);
             }
 
+            // --- 3. 컬럼 비율(flex, width) 강제 고정 (모바일에서 박스가 동일 크기로 커지는 현상 차단) ---
+            const enforceColumnRatios = () => {
+                // Streamlit 최신 버전(stColumn) 대응
+                const cols = parentDoc.querySelectorAll('div[data-testid="column"], div[data-testid="stColumn"]');
+                cols.forEach(col => {
+                    // Streamlit이 계산해둔 원래 너비(inline style)를 !important로 락인(Lock-in)합니다.
+                    if (col.style.width && !col.style.getPropertyPriority('width')) {
+                        col.style.setProperty('width', col.style.width, 'important');
+                    }
+                    if (col.style.flex && !col.style.getPropertyPriority('flex')) {
+                        col.style.setProperty('flex', col.style.flex, 'important');
+                    }
+                });
+            };
 
+            enforceColumnRatios();
+            
+            // 탭 전환이나 데이터 갱신으로 DOM이 변할 때마다 비율을 다시 강제 적용
+            const observer = new MutationObserver(() => {
+                enforceColumnRatios();
+            });
+            observer.observe(parentDoc.body, { childList: true, subtree: true });
 
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
@@ -248,11 +270,11 @@ st.markdown(f"""
         box-sizing: border-box !important; /* 일관된 박스 모델 적용 */
         width: 100% !important; /* 부모 크기인 1350px에 맞게 고정 */
     }}
-    /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, 원래 비율(flex)을 그대로 유지 */
-    body div[data-testid="column"] {{ /* Streamlit의 컬럼 요소 */
-        flex-shrink: 0 !important; /* 화면이 작아도 콘텐츠가 찌그러지지 않도록 강제 */
-        min-width: fit-content !important; /* 컬럼이 콘텐츠보다 작아지지 않도록 최소 너비 보장 */
+    /* 2. 개별 컬럼 비율을 유지하고 모바일에서 박스가 제멋대로 커지거나 찌그러지는 현상 방지 */
+    body div[data-testid="column"], body div[data-testid="stColumn"] {{ /* Streamlit의 컬럼 요소 */
+        min-width: 0 !important; /* 내부 콘텐츠(글자 등) 때문에 컬럼 비율이 무너지고 박스가 커지는 현상 차단 */
         box-sizing: border-box !important; /* 일관된 박스 모델 적용 */
+        /* flex-shrink나 fit-content를 강제하지 않아야 비율([1.2, 0.4, 1.0 ...])이 정상적으로 작동합니다. */
     }}
 
     /* 모바일에서 헤더 숨기기 및 상단 여백 조정 (화면 공간 확보) */
