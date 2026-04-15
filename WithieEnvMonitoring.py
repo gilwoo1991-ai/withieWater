@@ -135,10 +135,6 @@ components.html(
                         else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
                         else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
                         else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
-                        else {
-                            // 아이폰(iOS Safari) 등 Fullscreen API 미지원 기기 대응 팝업
-                            alert("🍏 아이폰은 정책상 버튼을 통한 전체화면 확장을 지원하지 않습니다.\\n\\n[아이폰 100% 전체화면 사용 꿀팁]\\n사파리 브라우저 하단의 '공유(내보내기) [↑]' 아이콘을 누르고 '홈 화면에 추가 [⊞]'를 선택하세요!\\n바탕화면에 생성된 아이콘으로 실행하시면 완벽한 전체화면으로 쾌적하게 모니터링할 수 있습니다.");
-                        }
                     } else {
                         if (parentDoc.exitFullscreen) parentDoc.exitFullscreen();
                         else if (parentDoc.webkitExitFullscreen) parentDoc.webkitExitFullscreen();
@@ -294,23 +290,14 @@ st.markdown(f"""
         margin: 0 auto !important; /* 화면 중앙 정렬을 통해 완벽한 확장형(Wide) 뷰 구현 */
     }}
     
-    /* [레이아웃 깨짐 방지 최종 솔루션] 모바일 뷰에서 컬럼이 세로로 쌓이거나 비율이 깨지는 현상 원천 차단 */
-    @media (max-width: 768px) {{
-        /* 1. 컬럼 컨테이너(가로 블록)가 세로로 쌓이는 것을 방지 */
-        div[data-testid="stHorizontalBlock"] {{
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }}
-        /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지하도록 강제 */
-        div[data-testid="column"] {{
-            /* Streamlit의 'width: 100% !important'를 무력화 */
-            width: auto !important; 
-            /* flex-basis를 0으로 설정하여 flex-grow 비율에 따라 너비가 결정되도록 함 */
-            flex: 1 1 0% !important; 
-            /* 최소 너비를 0으로 설정하여 컬럼이 과도하게 줄어드는 것을 방지 */
-            min-width: 0 !important; 
-        }}
-        /* 3. 아이폰 등 모바일에서 화면을 더 넓게 쓰기 위해 상단 불필요한 여백/헤더 최소화 */
+    /* [레이아웃 깨짐 방지 최종 솔루션] 기기 화면 크기와 관계없이 무조건 PC버전 가로 배열 강제 유지 */
+    /* 1. 컬럼 컨테이너(가로 블록)가 세로로 쌓이는 것을 원천 차단 */
+    div[data-testid="stHorizontalBlock"] {{
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+    }}
+    /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지 */
+    div[data-testid="column"] {{
         header[data-testid="stHeader"] {{
             display: none !important;
         }}
