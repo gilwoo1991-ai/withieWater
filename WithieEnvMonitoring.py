@@ -78,7 +78,40 @@ components.html(
             // Streamlit의 모바일 레이아웃 변형(컬럼 비율 파괴 등)을 원천 차단합니다.
             metaViewport.setAttribute('content', 'width=1350, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
             
-            // --- 2. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
+            // 2. CSS 변형 없이 JS로 컬럼 비율 강제 고정 (모바일 세로 모드 깨짐 방지)
+            function lockColumnWidths() {
+                const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
+                columns.forEach(col => {
+                    const inlineWidth = col.style.width;
+                    // 100%로 변경되기 전의 원본 PC 비율을 영구 백업
+                    if (inlineWidth && !inlineWidth.includes('100%') && !col.dataset.origWidth) {
+                        col.dataset.origWidth = inlineWidth;
+                    }
+                    const targetWidth = col.dataset.origWidth || inlineWidth;
+                    
+                    // 원본 PC 비율을 강제로 무한 고정 (!important)
+                    if (targetWidth && !targetWidth.includes('100%')) {
+                        col.style.setProperty('width', targetWidth, 'important');
+                        col.style.setProperty('min-width', targetWidth, 'important');
+                        col.style.setProperty('max-width', targetWidth, 'important');
+                        col.style.setProperty('flex', '1 1 ' + targetWidth, 'important');
+                    }
+                });
+                
+                // 가로 블록이 세로로 꺾이는 현상(flex-direction: column) 원천 차단
+                const hBlocks = parentDoc.querySelectorAll('div[data-testid="stHorizontalBlock"]');
+                hBlocks.forEach(block => {
+                    block.style.setProperty('flex-direction', 'row', 'important');
+                    block.style.setProperty('flex-wrap', 'nowrap', 'important');
+                });
+            }
+            
+            lockColumnWidths();
+            // 화면 회전이나 Streamlit 내부 반응형 작동 시에도 영구 고정되도록 실시간 감시
+            const observer = new MutationObserver(lockColumnWidths);
+            observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+            // --- 3. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
             if (!parentDoc.getElementById('mobile-fs-btn')) {
                 const fsBtn = parentDoc.createElement('div');
                 fsBtn.id = 'mobile-fs-btn';
