@@ -230,12 +230,12 @@ st.markdown(f"""
        PC 레이아웃 강제 고정 및 모바일 좌우 스크롤 생성
        ======================================================== */
     .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
-        min-width: 1350px !important; /* PC 버전과 동일한 크기(1350px)로 고정하여 모바일 축소 방지 및 가로 스크롤 유도 */
-        max-width: 100% !important; /* 확장형(Wide) 페이지에 맞게 모니터 해상도 전체 너비를 사용하도록 100% 허용 */
-        width: 100% !important;
+        min-width: 1350px !important; /* PC 버전과 동일한 크기(1350px)로 고정 */
+        max-width: 1350px !important; /* 확장형 페이지에서도 박스와 배관이 늘어나지 않도록 강제 고정 */
+        width: 1350px !important;     /* 절대 너비 고정 */
         padding-left: 2rem !important;  /* 화면 양끝 여백을 자연스럽게 확보 */
         padding-right: 2rem !important;
-        margin: 0 auto !important; /* 화면 중앙 정렬을 통해 완벽한 확장형(Wide) 뷰 구현 */
+        margin: 0 auto !important; /* 화면 중앙 정렬을 통해 뷰어 중앙 배치 */
     }}
     
     /* [레이아웃 깨짐 방지 최종 솔루션] 기기 화면 크기와 관계없이 무조건 PC버전 가로 배열 강제 유지 */
@@ -246,12 +246,11 @@ st.markdown(f"""
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         box-sizing: border-box !important; /* 일관된 박스 모델 적용 */
-        min-width: 100% !important; /* 컨테이너가 최소한 100% 너비를 유지하도록 강제 */
+        width: 100% !important; /* 부모 크기인 1350px에 맞게 고정 */
     }}
-    /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지 */
+    /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, 원래 비율(flex)을 그대로 유지 */
     body div[data-testid="column"] {{ /* Streamlit의 컬럼 요소 */
-        width: auto !important; /* Streamlit이 강제로 적용하는 width: 100%를 무력화하고 콘텐츠에 맞게 자동 조절 */
-        flex: 1 0 auto !important; /* flex-grow:1, flex-shrink:0, flex-basis:auto - 콘텐츠 크기를 존중하며 공간 채움 */
+        flex-shrink: 0 !important; /* 화면이 작아도 콘텐츠가 찌그러지지 않도록 강제 */
         min-width: fit-content !important; /* 컬럼이 콘텐츠보다 작아지지 않도록 최소 너비 보장 */
         box-sizing: border-box !important; /* 일관된 박스 모델 적용 */
     }}
