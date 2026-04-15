@@ -78,6 +78,20 @@ components.html(
             // Streamlit의 모바일 레이아웃 변형(컬럼 비율 파괴 등)을 원천 차단합니다.
             metaViewport.setAttribute('content', 'width=1350, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
 
+            // --- 2. 아이폰(iOS) 전체화면 지원(웹앱 모드) 메타태그 추가 ---
+            // 이 태그가 있으면 아이폰에서 '홈 화면에 추가' 시 주소창이 없는 100% 전체화면 앱으로 구동됩니다.
+            if (!parentDoc.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+                const metaApple = parentDoc.createElement('meta');
+                metaApple.name = 'apple-mobile-web-app-capable';
+                metaApple.content = 'yes';
+                parentDoc.head.appendChild(metaApple);
+                
+                const metaStatus = parentDoc.createElement('meta');
+                metaStatus.name = 'apple-mobile-web-app-status-bar-style';
+                metaStatus.content = 'black-translucent';
+                parentDoc.head.appendChild(metaStatus);
+            }
+
             // --- 3. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
             if (!parentDoc.getElementById('mobile-fs-btn')) {
                 const fsBtn = parentDoc.createElement('div');
@@ -121,7 +135,10 @@ components.html(
                         else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
                         else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
                         else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
-                        else alert("현재 브라우저/기기에서는 전체화면 API를 지원하지 않습니다. (예: 아이폰 Safari)");
+                        else {
+                            // 아이폰(iOS Safari) 등 Fullscreen API 미지원 기기 대응 팝업
+                            alert("🍏 아이폰은 정책상 버튼을 통한 전체화면 확장을 지원하지 않습니다.\\n\\n[아이폰 100% 전체화면 사용 꿀팁]\\n사파리 브라우저 하단의 '공유(내보내기) [↑]' 아이콘을 누르고 '홈 화면에 추가 [⊞]'를 선택하세요!\\n바탕화면에 생성된 아이콘으로 실행하시면 완벽한 전체화면으로 쾌적하게 모니터링할 수 있습니다.");
+                        }
                     } else {
                         if (parentDoc.exitFullscreen) parentDoc.exitFullscreen();
                         else if (parentDoc.webkitExitFullscreen) parentDoc.webkitExitFullscreen();
@@ -292,6 +309,13 @@ st.markdown(f"""
             flex: 1 1 0% !important; 
             /* 최소 너비를 0으로 설정하여 컬럼이 과도하게 줄어드는 것을 방지 */
             min-width: 0 !important; 
+        }}
+        /* 3. 아이폰 등 모바일에서 화면을 더 넓게 쓰기 위해 상단 불필요한 여백/헤더 최소화 */
+        header[data-testid="stHeader"] {{
+            display: none !important;
+        }}
+        .block-container {{
+            padding-top: 1rem !important;
         }}
     }}
     
