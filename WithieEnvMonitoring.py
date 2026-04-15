@@ -244,6 +244,27 @@ success_style_override = """
     }
 """
 
+# 다크모드 st.warning() 메시지 박스 시인성 개선
+warning_style_override = """
+    [data-testid="stAlert"][data-kind="warning"] {
+        background-color: #3B2E0A !important;
+        border: 1px solid #F1C40F !important;
+        border-radius: 10px !important;
+    }
+    [data-testid="stAlert"][data-kind="warning"] * {
+        color: #FFFFFF !important;
+    }
+"""
+
+# 사이드바 등 메시지 박스 내부 텍스트 강제 좌측 정렬 (모바일에서 텍스트 정렬 틀어짐 방지)
+alert_text_align_override = """
+    [data-testid="stAlert"] .stMarkdownContainer p {
+        text-align: left !important;
+        width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+"""
+
 # ★ 다크모드 전용: 강렬한 네온 효과 유지 ★
 flow_color = "#00ffff" # 형광 시안색 입자
 flow_glow = "0 0 8px #00ffff" # 강한 네온 빛 번짐 효과
@@ -513,6 +534,8 @@ st.markdown(f"""
     }}
     {info_style_override}
     {success_style_override}
+    {warning_style_override}
+    {alert_text_align_override}
 
     /* 탈질계통 메트릭 전용 커스텀 흰색 클래스 */
     .custom-white-metric .title {{
@@ -1019,15 +1042,15 @@ with st.sidebar:
     # Determine individual statuses
     ix_status_string = ""
     if train_a_running and train_b_running:
-        ix_status_string = "🟢 이온교환수지: 'A' & 'B' Train 가동"
+        ix_status_string = "🟢 이온교환수지: 'A' & 'B' Train 가동중"
     elif train_a_running:
-        ix_status_string = "🟢 이온교환수지: 'A' Train 가동"
+        ix_status_string = "🟢 이온교환수지: 'A' Train 가동중"
     elif train_b_running:
-        ix_status_string = "🟢 이온교환수지: 'B' Train 가동"
+        ix_status_string = "🟢 이온교환수지: 'B' Train 가동중"
     else:
-        ix_status_string = "🔴 이온교환수지: 정지중"
+        ix_status_string = "🔴 이온교환수지: 정지"
 
-    ro_status_string = "🟢 R.O System: 가동중" if ro_running else "🔴 R.O System: 정지중"
+    ro_status_string = "🟢 R.O System: 가동중" if ro_running else "🔴 R.O System: 정지"
 
     # Determine overall status for color
     is_pure_system_running = train_a_running or train_b_running or ro_running
@@ -1048,12 +1071,12 @@ with st.sidebar:
     if polisher_running:
         dh_status_strings.append("🟢 Polisher: 가동중")
     else:
-        dh_status_strings.append("🔴 Polisher: 정지중")
+        dh_status_strings.append("🔴 Polisher: 정지")
     
     if afm_running:
         dh_status_strings.append("🟢 AFM: 가동중")
     else:
-        dh_status_strings.append("🔴 AFM: 정지중")
+        dh_status_strings.append("🔴 AFM: 정지")
 
     is_dh_system_running = polisher_running or afm_running
     
@@ -1069,7 +1092,7 @@ with st.sidebar:
     if is_ww_running:
         st.success("🟢 가동중")
     else:
-        st.warning("🔴 정지중")
+        st.warning("🔴 정지")
 
     # --- 탈질계통 ---
     st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>탈질계통</p>", unsafe_allow_html=True)
