@@ -138,60 +138,6 @@ components.html(
                 parentDoc.head.appendChild(metaStatus);
             }
 
-            // --- 4. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
-            if (!parentDoc.getElementById('mobile-fs-btn')) {
-                const fsBtn = parentDoc.createElement('div');
-                fsBtn.id = 'mobile-fs-btn';
-                fsBtn.innerHTML = '⛶';
-                fsBtn.title = '전체화면 전환';
-                Object.assign(fsBtn.style, {
-                    // 해상도를 1350으로 속였으므로, 터치 기기이거나 실제 스크린이 작을 때만 표시되도록 수정
-                    display: window.parent.screen.width <= 768 || window.parent.matchMedia('(pointer: coarse)').matches ? 'block' : 'none',
-                    position: 'fixed',
-                    bottom: '20px',
-                    right: '20px',
-                    width: '50px',
-                    height: '50px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    color: '#00d4ff',
-                    border: '2px solid #00d4ff',
-                    borderRadius: '50%',
-                    zIndex: '9999999',
-                    fontSize: '24px',
-                    lineHeight: '46px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    boxShadow: '0 0 10px #00d4ff',
-                    backdropFilter: 'blur(4px)',
-                    transition: 'all 0.3s ease-in-out'
-                });
-
-                // 화면 회전 등 크기 변경 시 버튼 표시 여부 감지
-                window.parent.addEventListener('resize', () => {
-                    fsBtn.style.display = window.parent.screen.width <= 768 || window.parent.matchMedia('(pointer: coarse)').matches ? 'block' : 'none';
-                });
-
-                // 버튼 클릭 시 전체화면 진입/해제 로직
-                fsBtn.addEventListener('click', () => {
-                    const docEl = parentDoc.documentElement;
-                    const isFullscreen = parentDoc.fullscreenElement || parentDoc.webkitFullscreenElement || parentDoc.mozFullScreenElement || parentDoc.msFullscreenElement;
-                    
-                    if (!isFullscreen) {
-                        if (docEl.requestFullscreen) docEl.requestFullscreen();
-                        else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
-                        else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
-                        else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
-                    } else {
-                        if (parentDoc.exitFullscreen) parentDoc.exitFullscreen();
-                        else if (parentDoc.webkitExitFullscreen) parentDoc.webkitExitFullscreen();
-                        else if (parentDoc.mozCancelFullScreen) parentDoc.mozCancelFullScreen();
-                        else if (parentDoc.msExitFullscreen) parentDoc.msExitFullscreen();
-                    }
-                });
-                
-                parentDoc.body.appendChild(fsBtn);
-            }
-
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
     """,
@@ -589,6 +535,26 @@ else:
     logo_html = "🟢"
 
 st.markdown(f"<h2 style='color: #00d4ff; display: flex; align-items: center;'>{logo_html}위드인천에너지 수처리 공정 모니터링</h2>", unsafe_allow_html=True)
+
+# --- 전체화면 진입 버튼 ---
+if st.button("🖥️ 전체화면으로 보기", use_container_width=True):
+    components.html(
+        """
+        <script>
+            const docEl = window.parent.document.documentElement;
+            const isFullscreen = window.parent.document.fullscreenElement || window.parent.document.webkitFullscreenElement;
+
+            if (!isFullscreen) {
+                if (docEl.requestFullscreen) docEl.requestFullscreen();
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen(); // Safari
+                else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen(); // Firefox
+                else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen(); // IE/Edge
+            }
+        </script>
+        """,
+        height=0, width=0
+    )
+
 st.divider()
 
 # --- Raw Water Basin 수위 계산 ---
