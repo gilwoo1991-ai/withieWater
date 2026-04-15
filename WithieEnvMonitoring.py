@@ -217,7 +217,7 @@ title_color = "#000000"   # 박스 내부 제목 글자: 검정
 data_color = "#1a1c24"    # 박스 내부 수치 글자
 sub_header_color = "#ffffff" # 배경 위 소제목: 흰색
 metric_val = "#ffffff"    # 하단 메트릭: 흰색
-sidebar_title_color = "#000000" # 다크모드 사이드바 제목: 검정
+sidebar_title_color = "#ffffff" # 다크모드 사이드바 제목: 흰색
 dh_label_color = "#000000"
 
 # 다크모드 st.info() 메시지 박스 시인성 개선
