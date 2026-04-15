@@ -66,25 +66,51 @@ components.html(
         try {
             const parentDoc = window.parent.document;
             
+            // 1. 모바일 뷰포트 강제 설정 (1350px 고정)
+            // 데스크탑 크기(1350px)로 뷰포트를 고정하여 모바일 기기가 억지로 모바일용 화면으로 변환하지 못하게 차단합니다.
+            let metaViewport = parentDoc.querySelector('meta[name="viewport"]');
+            if (!metaViewport) {
+                metaViewport = parentDoc.createElement('meta');
+                metaViewport.name = 'viewport';
+                parentDoc.head.appendChild(metaViewport);
+            }
+            metaViewport.setAttribute('content', 'width=1350');
+
             // Streamlit의 컬럼이 모바일에서 강제로 100%가 되며 세로로 쌓이는 현상을 방지
             function lockColumnWidths() {
                 const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
                 columns.forEach((col, idx) => {
                     const inlineWidth = col.style.width;
-                    // 원본 PC 비율(60%, 40% 등)을 강제로 고정 (!important)
-                    if (inlineWidth && !inlineWidth.includes('100%')) {
-                        col.style.setProperty('width', inlineWidth, 'important');
-                        col.style.setProperty('min-width', inlineWidth, 'important');
-                        col.style.setProperty('max-width', inlineWidth, 'important');
-                        col.style.setProperty('flex', '1 1 ' + inlineWidth, 'important');
+                    
+                    // 100%로 변경되기 전의 원본 비율(예: 60%, 40%)을 메모리(dataset)에 영구 백업
+                    if (inlineWidth && !inlineWidth.includes('100%') && !col.dataset.origWidth) {
+                        col.dataset.origWidth = inlineWidth;
                     }
+                    
+                    // 백업된 원본 비율이 있다면 그것을 사용, 없다면 현재 너비 사용
+                    const targetWidth = col.dataset.origWidth || inlineWidth;
+                    
+                    // 원본 PC 비율을 강제로 무한 고정 (!important)
+                    if (targetWidth && !targetWidth.includes('100%')) {
+                        col.style.setProperty('width', targetWidth, 'important');
+                        col.style.setProperty('min-width', targetWidth, 'important');
+                        col.style.setProperty('max-width', targetWidth, 'important');
+                        col.style.setProperty('flex', '1 1 ' + targetWidth, 'important');
+                    }
+                });
+                
+                // 강제로 가로 블록이 세로로 꺾이는 현상(flex-direction: column)을 원천 차단
+                const hBlocks = parentDoc.querySelectorAll('div[data-testid="stHorizontalBlock"]');
+                hBlocks.forEach(block => {
+                    block.style.setProperty('flex-direction', 'row', 'important');
+                    block.style.setProperty('flex-wrap', 'nowrap', 'important');
                 });
             }
             
             lockColumnWidths();
             // 화면 조작 시에도 영구 고정되도록 감시
             const observer = new MutationObserver(lockColumnWidths);
-            observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+            observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
             
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
@@ -186,6 +212,14 @@ st.markdown(f"""
     }}
     [data-testid="column"] {{
         min-width: 0 !important;
+    }}
+    
+    /* 642px 미만 모바일 화면에서 Streamlit의 강제 세로화 오버라이딩 추가 */
+    @media (max-width: 768px) {{
+        [data-testid="stHorizontalBlock"] {{
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }}
     }}
     
     h1, h2, h3 {{ color: {sub_header_color} !important; }}
