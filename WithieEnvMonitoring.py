@@ -277,22 +277,21 @@ st.markdown(f"""
         margin: 0 auto !important; /* 화면 중앙 정렬을 통해 완벽한 확장형(Wide) 뷰 구현 */
     }}
     
-    /* 무조건 가로 나열 (세로 모드에서도 세로로 쌓이지 않도록 안전장치 강제) */
-    [data-testid="stHorizontalBlock"] {{
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-    }}
-    [data-testid="column"] {{
-        min-width: 0 !important;
-    }}
-    
-    /* 모바일 뷰에서 컬럼이 세로로 쌓이는 현상 원천 차단 (641px 깨짐 현상 해결) */
+    /* [레이아웃 깨짐 방지 최종 솔루션] 모바일 뷰에서 컬럼이 세로로 쌓이거나 비율이 깨지는 현상 원천 차단 */
     @media (max-width: 768px) {{
+        /* 1. 컬럼 컨테이너(가로 블록)가 세로로 쌓이는 것을 방지 */
+        div[data-testid="stHorizontalBlock"] {{
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }}
+        /* 2. 개별 컬럼의 너비가 100%로 강제 확장되는 것을 방지하고, PC의 flex 비율을 유지하도록 강제 */
         div[data-testid="column"] {{
-            /* Streamlit이 강제로 적용하는 width: 100% !important를 무력화하여 PC 비율 유지 */
-            width: unset !important;
-            /* flex 비율에 따라 너비가 결정되도록 복원 */
-            flex: 1 1 0% !important;
+            /* Streamlit의 'width: 100% !important'를 무력화 */
+            width: auto !important; 
+            /* flex-basis를 0으로 설정하여 flex-grow 비율에 따라 너비가 결정되도록 함 */
+            flex: 1 1 0% !important; 
+            /* 최소 너비를 0으로 설정하여 컬럼이 과도하게 줄어드는 것을 방지 */
+            min-width: 0 !important; 
         }}
     }}
     
