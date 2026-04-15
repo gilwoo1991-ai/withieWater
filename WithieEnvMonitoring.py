@@ -77,7 +77,8 @@ components.html(
             // 모바일 기기의 너비(device-width) 대신 데스크탑 너비(1350px)를 모바일에 강제 인식시켜 
             // Streamlit의 모바일 레이아웃 변형(컬럼 비율 파괴 등)을 원천 차단합니다.
             // initial-scale=1.0을 제거하여 모바일 브라우저가 화면을 강제로 1350px로 렌더링하고 축소하도록 만듭니다.
-            metaViewport.setAttribute('content', 'width=1350, user-scalable=yes');
+            // 줌인/줌아웃(Pinch-to-zoom)을 위해 maximum-scale 추가
+            metaViewport.setAttribute('content', 'width=1350, user-scalable=yes, maximum-scale=5.0, minimum-scale=0.1');
 
             // --- 2. 아이폰(iOS) 전체화면 지원(웹앱 모드) 메타태그 추가 ---
             // 이 태그가 있으면 아이폰에서 '홈 화면에 추가' 시 주소창이 없는 100% 전체화면 앱으로 구동됩니다.
@@ -246,6 +247,7 @@ st.markdown(f"""
         overflow-x: auto !important; 
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important; /* iOS 모바일 스크롤 부드럽게 */
+        touch-action: auto !important; /* 모바일 기기에서 줌인/줌아웃 및 기본 터치 제스처 허용 */
     }}
     
     /* ========================================================
