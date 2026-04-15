@@ -83,6 +83,49 @@ components.html(
             Object.defineProperty(parentWin, 'outerWidth', { get: () => 1350, configurable: true });
             Object.defineProperty(parentDoc.documentElement, 'clientWidth', { get: () => 1350, configurable: true });
             
+            // --- 추가: 643px 이하에서 발동하는 미디어 쿼리 감지 자체를 완벽 차단 ---
+            if (!parentWin.__matchMediaSpoofed) {
+                const origMatchMedia = parentWin.matchMedia;
+                parentWin.matchMedia = function(query) {
+                    if (query && (query.includes('max-width') || query.includes('max-device-width'))) {
+                        return { matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false };
+                    }
+                    return origMatchMedia.call(parentWin, query);
+                };
+                parentWin.__matchMediaSpoofed = true;
+            }
+
+            // --- 추가: 브라우저 native CSS가 100%로 덮어씌우는 것을 방지하기 위해 원본 비율 영구 고정 ---
+            const styleId = "mobile-column-fix-v3";
+            let styleEl = parentDoc.getElementById(styleId);
+            if (!styleEl) {
+                styleEl = parentDoc.createElement("style");
+                styleEl.id = styleId;
+                parentDoc.head.appendChild(styleEl);
+            }
+            
+            function enforcePCLayout() {
+                let css = "";
+                const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
+                columns.forEach((col, idx) => {
+                    const inlineWidth = col.style.width;
+                    if (inlineWidth && !inlineWidth.includes('100%')) {
+                        const colId = `col-fix-${idx}`;
+                        col.setAttribute("data-col-fix-id", colId);
+                        // 최고 명시도(!important)로 643px 이하 미디어 쿼리의 width: 100% 무력화
+                        css += `div[data-testid="column"][data-col-fix-id="${colId}"] { width: ${inlineWidth} !important; min-width: ${inlineWidth} !important; max-width: ${inlineWidth} !important; flex: 1 1 ${inlineWidth} !important; }\n`;
+                    }
+                });
+                if (styleEl.innerHTML !== css) { styleEl.innerHTML = css; }
+            }
+            
+            enforcePCLayout();
+            if (!parentWin.__layoutObserver) {
+                const observer = new MutationObserver(enforcePCLayout);
+                observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+                parentWin.__layoutObserver = observer;
+            }
+
             // 3. 리사이즈 이벤트 강제 발생: 속인 해상도(1350px)를 바탕으로 100%로 풀려버린 컬럼들을 PC 비율로 즉각 재계산
             const triggerResize = () => parentWin.dispatchEvent(new Event('resize'));
             triggerResize();
