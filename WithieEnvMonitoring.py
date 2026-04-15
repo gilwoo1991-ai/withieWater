@@ -149,6 +149,60 @@ components.html(
             const observer = new MutationObserver(lockColumnWidths);
             observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
             
+            // --- 2. 모바일용 전체화면(Fullscreen) 토글 버튼 추가 ---
+            if (!parentDoc.getElementById('mobile-fs-btn')) {
+                const fsBtn = parentDoc.createElement('div');
+                fsBtn.id = 'mobile-fs-btn';
+                fsBtn.innerHTML = '⛶';
+                fsBtn.title = '전체화면 전환';
+                Object.assign(fsBtn.style, {
+                    display: window.parent.innerWidth <= 768 ? 'block' : 'none',
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    width: '50px',
+                    height: '50px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    color: '#00d4ff',
+                    border: '2px solid #00d4ff',
+                    borderRadius: '50%',
+                    zIndex: '9999999',
+                    fontSize: '24px',
+                    lineHeight: '46px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 10px #00d4ff',
+                    backdropFilter: 'blur(4px)',
+                    transition: 'all 0.3s ease-in-out'
+                });
+
+                // 화면 회전 등 크기 변경 시 버튼 표시 여부 감지
+                window.parent.addEventListener('resize', () => {
+                    fsBtn.style.display = window.parent.innerWidth <= 768 ? 'block' : 'none';
+                });
+
+                // 버튼 클릭 시 전체화면 진입/해제 로직
+                fsBtn.addEventListener('click', () => {
+                    const docEl = parentDoc.documentElement;
+                    const isFullscreen = parentDoc.fullscreenElement || parentDoc.webkitFullscreenElement || parentDoc.mozFullScreenElement || parentDoc.msFullscreenElement;
+                    
+                    if (!isFullscreen) {
+                        if (docEl.requestFullscreen) docEl.requestFullscreen();
+                        else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+                        else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
+                        else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+                        else alert("현재 브라우저/기기에서는 전체화면 API를 지원하지 않습니다. (예: 아이폰 Safari)");
+                    } else {
+                        if (parentDoc.exitFullscreen) parentDoc.exitFullscreen();
+                        else if (parentDoc.webkitExitFullscreen) parentDoc.webkitExitFullscreen();
+                        else if (parentDoc.mozCancelFullScreen) parentDoc.mozCancelFullScreen();
+                        else if (parentDoc.msExitFullscreen) parentDoc.msExitFullscreen();
+                    }
+                });
+                
+                parentDoc.body.appendChild(fsBtn);
+            }
+
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
     """,
