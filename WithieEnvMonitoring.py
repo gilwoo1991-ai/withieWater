@@ -55,7 +55,7 @@ def get_image_as_base64(path):
 
 
 # 1. 페이지 전체 설정
-st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="auto")
+st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="expanded")
 
 # --- 모바일 가로 모드 강제(유도) 오버레이 ---
 st.markdown("""
@@ -240,8 +240,8 @@ st.markdown(f"""
        ======================================================== */
     .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
         min-width: 1350px !important; /* 콘텐츠의 최소 너비를 강제 */
-        max-width: 1350px !important; /* 아주 큰 화면에서 레이아웃이 과도하게 늘어나는 것을 방지 */
-        width: 1350px !important; 
+        max-width: 100% !important; /* 확장형(Wide) 페이지에 맞게 모니터 해상도 전체 너비를 사용하도록 100% 허용 */
+        width: 100% !important; 
         padding-left: 0.5rem !important;  /* Streamlit 기본 좌우 여백을 줄여서 잘림 현상 방지 */
         padding-right: 0.5rem !important;
         margin-left: 0 !important; /* 스크롤 시 왼쪽 화면이 잘리는 현상을 방지하기 위해 무조건 왼쪽 정렬 */
