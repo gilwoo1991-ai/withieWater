@@ -57,6 +57,43 @@ def get_image_as_base64(path):
 # 1. 페이지 전체 설정
 st.set_page_config(layout="wide", page_title="위드인천에너지 수처리 공정 모니터링", initial_sidebar_state="auto")
 
+# --- 모바일 가로 모드 강제(유도) 오버레이 ---
+st.markdown("""
+<div id="portrait-blocker" class="portrait-overlay">
+    <div style="font-size: 4rem; margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out;">📱</div>
+    <div>스마트폰을 가로로 회전해주세요</div>
+    <div style="font-size: 1rem; color: #888; margin-top: 15px;">원활한 공정 모니터링을 위해 가로 모드가 필요합니다.</div>
+</div>
+<style>
+    .portrait-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-color: #000000;
+        z-index: 9999999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #00d4ff;
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+    }
+    @keyframes rotatePhone {
+        0% { transform: rotate(0deg); }
+        50% { transform: rotate(-90deg); }
+        100% { transform: rotate(0deg); }
+    }
+    /* 모바일 기기(너비 768px 이하)에서 세로 모드일 때만 표시 */
+    @media screen and (max-width: 768px) and (orientation: portrait) {
+        .portrait-overlay {
+            display: flex !important;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- 모바일 환경에서 PC 화면 레이아웃(배관 등) 깨짐 방지 ---
 # 모바일 브라우저의 viewport를 강제로 PC 화면 너비(1350px)로 고정하여 
 # Streamlit의 모바일용 화면 변형(반응형 모드)이 작동하지 않게 만듭니다.
@@ -189,6 +226,7 @@ st.markdown(f"""
     .main, [data-testid="stMain"] {{ 
         background-color: {bg_color};
         overflow-x: auto !important; /* 창이 좁아지면 메인 화면 하단에 스크롤바 생성 */
+        }}
     /* 모바일 기기에서도 최상위 컨테이너가 스크롤을 막지 못하도록 전체 강제 오버라이딩 */
     html, body, [data-testid="stApp"], [data-testid="stAppViewContainer"], .main, [data-testid="stMain"] {{ 
         background-color: {bg_color} !important;
@@ -489,12 +527,12 @@ with col_left:
         
         # 데이터 기반으로 Train A/B 가동 상태 결정
         try:
-            train_a_running = float(get_value('Train_A_Flow', '0')) > 0
+            train_a_running = float(get_value('Train_A_Flow', '9')) > 0
         except (ValueError, TypeError):
             train_a_running = False
 
         try:
-            train_b_running = float(get_value('Train_B_Flow', '0')) > 0
+            train_b_running = float(get_value('Train_B_Flow', '9')) > 0
         except (ValueError, TypeError):
             train_b_running = False
         
@@ -561,7 +599,7 @@ with col_left:
         
         # 데이터 기반으로 R.O System 가동 상태 결정
         try:
-            ro_running = float(get_value('RO_System_Flow', '0')) > 0
+            ro_running = float(get_value('RO_System_Flow', '6')) > 0
         except (ValueError, TypeError):
             ro_running = False
 
@@ -596,12 +634,12 @@ with col_right:
 
         # 데이터 기반으로 Polisher/AFM 가동 상태 결정
         try:
-            polisher_running = float(get_value('Polisher_Flow', '0')) > 0
+            polisher_running = float(get_value('Polisher_Flow', '80')) > 0
         except (ValueError, TypeError):
             polisher_running = False
         
         try:
-            afm_running = float(get_value('AFM_Flow', '0')) > 0
+            afm_running = float(get_value('AFM_Flow', '80')) > 0
         except (ValueError, TypeError):
             afm_running = False
 
@@ -668,7 +706,7 @@ st.divider()
 st.markdown("### 3. 폐수처리계통")
 
 try:
-    is_ww_running = float(get_value('WW_Flow_Rate', '0')) > 0
+    is_ww_running = float(get_value('WW_Flow_Rate', '5')) > 0
 except (ValueError, TypeError):
     is_ww_running = False
 
@@ -688,7 +726,7 @@ clarified_pond_height, clarified_pond_label = get_pond_details('Clarified_W_POND
 filtered_pond_height, filtered_pond_label = get_pond_details('Filtered_Pond_Level_Status')
 
 # --- Pressure Filter 및 가동 상태에 따른 스타일 정의 ---
-pressure_filter_status = get_value('Pressure_Filter_Status', 'STOP').upper()
+pressure_filter_status = get_value('Pressure_Filter_Status', 'A').upper()
 is_filter_a_running = is_ww_running and (pressure_filter_status == 'A')
 is_filter_b_running = is_ww_running and (pressure_filter_status == 'B')
 
@@ -810,7 +848,7 @@ with denitrification_tabs[0]:
 
     with col4_m:
         # 데이터 기반으로 암모니아수 주입량 및 가동 상태 결정
-        nh4oh_consumption_val = get_value('NH4OH_Consumption', '0')
+        nh4oh_consumption_val = get_value('NH4OH_Consumption', '125')
         try:
             is_den_running = float(nh4oh_consumption_val) > 0
         except (ValueError, TypeError):
@@ -984,7 +1022,7 @@ with st.sidebar:
     
     st_load_side = get_value('ST_LOAD', '24')
     nox_side = get_value('NOx', '15')
-    nh4oh_side = get_value('NH4OH_Consumption', '0')
+    nh4oh_side = get_value('NH4OH_Consumption', '125')
 
     den_icon = "🟢" if is_den_running else "🔴"
     den_details = f"{den_icon} ST Load: {st_load_side} MW  \n{den_icon} NOx: {nox_side} ppm  \n{den_icon} 암모니아수 투입량: {nh4oh_side} kg/h"
