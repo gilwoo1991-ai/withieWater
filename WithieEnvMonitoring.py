@@ -64,73 +64,28 @@ components.html(
     """
     <script>
         try {
-            const parentWin = window.parent;
-            const parentDoc = parentWin.document;
-
-            // 1. 모바일 뷰포트를 강제로 1350px 캔버스로 고정 (접속 시 전체 화면이 쏙 들어가게 축소 유도)
-            let metaViewport = parentDoc.querySelector('meta[name="viewport"]');
-            if (metaViewport) {
-                metaViewport.setAttribute('content', 'width=1350, initial-scale=0.25, maximum-scale=3.0, user-scalable=yes');
-            } else {
-                metaViewport = parentDoc.createElement('meta');
-                metaViewport.name = 'viewport';
-                metaViewport.content = 'width=1350, initial-scale=0.25, maximum-scale=3.0, user-scalable=yes';
-                parentDoc.head.appendChild(metaViewport);
-            }
-
-            // 2. Streamlit React 엔진 속이기: 스마트폰 세로 모드에서도 브라우저 너비를 무조건 1350px로 인식하게 조작
-            Object.defineProperty(parentWin, 'innerWidth', { get: () => 1350, configurable: true });
-            Object.defineProperty(parentWin, 'outerWidth', { get: () => 1350, configurable: true });
-            Object.defineProperty(parentDoc.documentElement, 'clientWidth', { get: () => 1350, configurable: true });
+            const parentDoc = window.parent.document;
             
-            // --- 추가: 643px 이하에서 발동하는 미디어 쿼리 감지 자체를 완벽 차단 ---
-            if (!parentWin.__matchMediaSpoofed) {
-                const origMatchMedia = parentWin.matchMedia;
-                parentWin.matchMedia = function(query) {
-                    if (query && (query.includes('max-width') || query.includes('max-device-width'))) {
-                        return { matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false };
-                    }
-                    return origMatchMedia.call(parentWin, query);
-                };
-                parentWin.__matchMediaSpoofed = true;
-            }
-
-            // --- 추가: 브라우저 native CSS가 100%로 덮어씌우는 것을 방지하기 위해 원본 비율 영구 고정 ---
-            const styleId = "mobile-column-fix-v3";
-            let styleEl = parentDoc.getElementById(styleId);
-            if (!styleEl) {
-                styleEl = parentDoc.createElement("style");
-                styleEl.id = styleId;
-                parentDoc.head.appendChild(styleEl);
-            }
-            
-            function enforcePCLayout() {
-                let css = "";
+            // Streamlit의 컬럼이 모바일에서 강제로 100%가 되며 세로로 쌓이는 현상을 방지
+            function lockColumnWidths() {
                 const columns = parentDoc.querySelectorAll('div[data-testid="column"]');
                 columns.forEach((col, idx) => {
                     const inlineWidth = col.style.width;
+                    // 원본 PC 비율(60%, 40% 등)을 강제로 고정 (!important)
                     if (inlineWidth && !inlineWidth.includes('100%')) {
-                        const colId = `col-fix-${idx}`;
-                        col.setAttribute("data-col-fix-id", colId);
-                        // 최고 명시도(!important)로 643px 이하 미디어 쿼리의 width: 100% 무력화
-                        css += `div[data-testid="column"][data-col-fix-id="${colId}"] { width: ${inlineWidth} !important; min-width: ${inlineWidth} !important; max-width: ${inlineWidth} !important; flex: 1 1 ${inlineWidth} !important; }\n`;
+                        col.style.setProperty('width', inlineWidth, 'important');
+                        col.style.setProperty('min-width', inlineWidth, 'important');
+                        col.style.setProperty('max-width', inlineWidth, 'important');
+                        col.style.setProperty('flex', '1 1 ' + inlineWidth, 'important');
                     }
                 });
-                if (styleEl.innerHTML !== css) { styleEl.innerHTML = css; }
             }
             
-            enforcePCLayout();
-            if (!parentWin.__layoutObserver) {
-                const observer = new MutationObserver(enforcePCLayout);
-                observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
-                parentWin.__layoutObserver = observer;
-            }
-
-            // 3. 리사이즈 이벤트 강제 발생: 속인 해상도(1350px)를 바탕으로 100%로 풀려버린 컬럼들을 PC 비율로 즉각 재계산
-            const triggerResize = () => parentWin.dispatchEvent(new Event('resize'));
-            triggerResize();
-            setTimeout(triggerResize, 200);
-            setTimeout(triggerResize, 800);
+            lockColumnWidths();
+            // 화면 조작 시에도 영구 고정되도록 감시
+            const observer = new MutationObserver(lockColumnWidths);
+            observer.observe(parentDoc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+            
         } catch (e) { console.error("Viewport 세팅 실패", e); }
     </script>
     """,
@@ -212,17 +167,22 @@ st.markdown(f"""
     }}
     
     /* ========================================================
-       창 크기를 줄여도 레이아웃이 깨지지 않고 스크롤이 생기도록 강제 고정
-       메인 콘텐츠의 너비를 강제 고정하여 좁은 창에서 스크롤을 유도
+       PC 레이아웃 고정 및 모바일 기기 자동 축소(반응형 줌) 적용
        ======================================================== */
     .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
         min-width: 1350px !important; /* 콘텐츠의 최소 너비를 강제 */
         max-width: 1350px !important; /* 아주 큰 화면에서 레이아웃이 과도하게 늘어나는 것을 방지 */
-        width: 1350px !important; /* 모바일 기기에서도 화면 너비 완벽 고정 */
+        width: 1350px !important; 
         padding-left: 0.5rem !important;  /* Streamlit 기본 좌우 여백을 줄여서 잘림 현상 방지 */
         padding-right: 0.5rem !important;
-        margin-left: 0 !important; /* 창이 좁아질 때 가운데 정렬로 인해 왼쪽 화면이 잘리는 현상 방지 */
-        margin-right: auto !important;
+        margin: 0 auto !important; /* 항상 가운데 정렬 */
+    }}
+    
+    /* 화면 너비가 1350px 보다 작아지면 1350px짜리 캔버스를 비율에 맞춰 한눈에 쏙 들어가게 축소 (반응형 느낌) */
+    @media screen and (max-width: 1350px) {{
+        .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"] {{
+            zoom: calc(100vw / 1360) !important;
+        }}
     }}
     
     /* 무조건 가로 나열 (세로 모드에서도 세로로 쌓이지 않도록 안전장치 강제) */
