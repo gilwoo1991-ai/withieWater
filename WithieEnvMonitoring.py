@@ -264,7 +264,29 @@ alert_text_align_override = """
         margin-bottom: 0 !important;
         margin-left: 0 !important;
         padding-left: 0 !important;
-        white-space: normal !important; /* HTML 구조상 발생하는 유령 공백(들여쓰기) 원천 차단 */
+    }
+    /* 사이드바 전용 커스텀 알림 박스 (들여쓰기 버그 원천 차단용) */
+    .sidebar-alert-success {
+        background-color: #022C17;
+        border: 1px solid #2ECC71;
+        border-radius: 10px;
+        padding: 14px;
+        color: #FFFFFF;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        text-align: left;
+    }
+    .sidebar-alert-warning {
+        background-color: #3B2E0A;
+        border: 1px solid #F1C40F;
+        border-radius: 10px;
+        padding: 14px;
+        color: #FFFFFF;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        text-align: left;
     }
 """
 
@@ -1059,13 +1081,13 @@ with st.sidebar:
     is_pure_system_running = train_a_running or train_b_running or ro_running
     
     # Combine strings
-    combined_status = f"{ix_status_string}\n\n{ro_status_string}"
+    combined_status = f"{ix_status_string}<br><br>{ro_status_string}"
 
     # Display in a single box
     if is_pure_system_running:
-        st.success(combined_status)
+        st.markdown(f'<div class="sidebar-alert-success">{combined_status}</div>', unsafe_allow_html=True)
     else:
-        st.warning(combined_status)
+        st.markdown(f'<div class="sidebar-alert-warning">{combined_status}</div>', unsafe_allow_html=True)
 
     # --- DH처리계통 ---
     st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>DH처리계통</p>", unsafe_allow_html=True)
@@ -1083,19 +1105,19 @@ with st.sidebar:
 
     is_dh_system_running = polisher_running or afm_running
     
-    combined_dh_status = "\n\n".join(dh_status_strings)
+    combined_dh_status = "<br><br>".join(dh_status_strings)
 
     if is_dh_system_running:
-        st.success(combined_dh_status)
+        st.markdown(f'<div class="sidebar-alert-success">{combined_dh_status}</div>', unsafe_allow_html=True)
     else:
-        st.warning(combined_dh_status)
+        st.markdown(f'<div class="sidebar-alert-warning">{combined_dh_status}</div>', unsafe_allow_html=True)
 
     # --- 폐수처리계통 ---
     st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>폐수처리계통</p>", unsafe_allow_html=True)
     if is_ww_running:
-        st.success("🟢 가동중")
+        st.markdown('<div class="sidebar-alert-success">🟢 가동중</div>', unsafe_allow_html=True)
     else:
-        st.warning("🔴 정지")
+        st.markdown('<div class="sidebar-alert-warning">🔴 정지</div>', unsafe_allow_html=True)
 
     # --- 탈질계통 ---
     st.markdown(f"<p style='font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: {sidebar_title_color};'>탈질계통</p>", unsafe_allow_html=True)
@@ -1105,11 +1127,11 @@ with st.sidebar:
     nh4oh_side = get_value('NH4OH_Consumption', '125')
 
     den_icon = "🟢" if is_den_running else "🔴"
-    den_details = f"{den_icon} ST Load: {st_load_side} MW\n\n{den_icon} NOx: {nox_side} ppm\n\n{den_icon} 암모니아수 투입량: {nh4oh_side} kg/h"
+    den_details = f"{den_icon} ST Load: {st_load_side} MW<br><br>{den_icon} NOx: {nox_side} ppm<br><br>{den_icon} 암모니아수 투입량: {nh4oh_side} kg/h"
 
     if is_den_running:
-        st.success(den_details)
+        st.markdown(f'<div class="sidebar-alert-success">{den_details}</div>', unsafe_allow_html=True)
     else:
-        st.warning(den_details)
+        st.markdown(f'<div class="sidebar-alert-warning">{den_details}</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='flex: 1;'></div>", unsafe_allow_html=True)
